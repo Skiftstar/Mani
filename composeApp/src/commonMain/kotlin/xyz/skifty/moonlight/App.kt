@@ -13,15 +13,21 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 import moonlight.composeapp.generated.resources.Res
 import moonlight.composeapp.generated.resources.compose_multiplatform
+import xyz.skifty.moonlight.api.ApiService
 
 @Composable
 @Preview
 fun App() {
+
+    var apiResponse by remember { mutableStateOf("") }
+    var scope = rememberCoroutineScope()
+
     MaterialTheme {
         var showContent by remember { mutableStateOf(false) }
         Column(
@@ -32,8 +38,16 @@ fun App() {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Button(onClick = { showContent = !showContent }) {
-                Text("Click me!")
+                Text("Click me!!")
             }
+            Button(onClick = {
+                scope.launch {
+                    apiResponse = ApiService().callTest()
+                }
+            }) {
+                Text("Test")
+            }
+            Text(apiResponse)
             AnimatedVisibility(showContent) {
                 val greeting = remember { Greeting().greet() }
                 Column(
