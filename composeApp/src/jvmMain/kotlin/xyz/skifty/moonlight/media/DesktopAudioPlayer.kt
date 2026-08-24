@@ -1,13 +1,18 @@
 package xyz.skifty.moonlight.media
 
+import androidx.compose.runtime.mutableStateOf
 import uk.co.caprica.vlcj.factory.MediaPlayerFactory
 import uk.co.caprica.vlcj.player.base.MediaPlayer
 import uk.co.caprica.vlcj.player.base.MediaPlayerEventAdapter
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 class DesktopAudioPlayer {
 
     private val factory = MediaPlayerFactory()
     private val player: MediaPlayer = factory.mediaPlayers().newMediaPlayer()
+    var isPlaying: Boolean by mutableStateOf(false)
+        private set
 
     init {
         player.events().addMediaPlayerEventListener(object : MediaPlayerEventAdapter() {
@@ -21,24 +26,36 @@ class DesktopAudioPlayer {
         })
     }
 
-    /** Play a URL or local file */
-    fun play(url: String) {
-        player.media().play(url)
+    fun length(): Long {
+        if (player.media() == null || player.media().info() == null) {
+            return 0
+        }
+        return player.media().info().duration()
     }
 
-    /** Stop playback */
-    fun stop() {
+    fun play(songInfo: SongInfo, activeSongInfo: SongInfo) {
+        player.media().play(songInfo.songPlaybackUrl?:"")
+        activeSongInfo.setSong(songInfo)
+        isPlaying = true
+    }
+
+    fun stop(activeSongInfo: SongInfo) {
         player.controls().stop()
+        activeSongInfo.clear()
+        isPlaying = false
     }
 
-    /** Pause playback */
     fun pause() {
         player.controls().pause()
+        isPlaying = !player.status().isPlaying
     }
 
-    /** Seek to position in milliseconds */
     fun seek(ms: Long) {
         player.controls().setTime(ms)
+    }
+
+    fun seekFraction(fraction: Float) {
+        player.controls().setPosition(fraction.coerceIn(0f, 1f))
     }
 
     /** Get current playback time in milliseconds */
@@ -46,12 +63,10 @@ class DesktopAudioPlayer {
         return player.status().time()
     }
 
-    /** Set volume 0–100 */
     fun setVolume(volume: Int) {
         player.audio().setVolume(volume.coerceIn(0, 100))
     }
 
-    /** Release resources */
     fun release() {
         player.release()
         factory.release()
