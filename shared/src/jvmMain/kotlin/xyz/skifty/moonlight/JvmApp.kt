@@ -75,7 +75,13 @@ fun JvmApp() {
     }
 
     DisposableEffect(Unit) {
-        onDispose { mprisService?.close() }
+        onDispose {
+            mprisService?.close()
+            // Unlike the previous vlcj-backed player, this now owns a spawned mpv subprocess -
+            // releasing it here (rather than never, as before) keeps a normal app quit from
+            // orphaning it.
+            audioPlayer.release()
+        }
     }
 
     remember {

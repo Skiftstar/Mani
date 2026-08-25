@@ -89,10 +89,10 @@ fun ProgressSlider(
     }
 
     fun commitSeek() {
-        // seekFraction(), not seek(ms): switching this to an absolute-time seek was tried and made
-        // seeking stop working entirely (always reset to the start) - reverted back to fraction-based,
-        // which is confirmed to actually work for this stream even if the position display can
-        // still glitch briefly (see the transient-reset guard in NowPlayingBottomWidget).
+        // seekFraction(), not seek(ms): both are equally reliable on the current mpv-backed
+        // player (unlike the previous vlcj backend, where this distinction mattered) - kept as a
+        // fraction here purely because that's what this slider already tracks internally, sparing
+        // it a duration lookup to convert to an absolute position.
         setProgress((sliderFraction * maxLengthMs).toLong())
         audioPlayer.seekFraction(sliderFraction)
     }
