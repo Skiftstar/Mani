@@ -8,13 +8,19 @@ import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.channels.ByteChannel
 import java.nio.charset.StandardCharsets
-import java.nio.file.Files
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 private const val COMMAND_TIMEOUT_MS = 3_000L
+
+// mpv's JSON IPC messages carry fields MpvIpcMessage doesn't model (e.g. end-file's
+// playlist_entry_id) - without this, decoding any such message throws and the whole message
+// (including fields callers do care about, like end-file's `reason`) is dropped.
+private val json = Json {
+    ignoreUnknownKeys = true
+}
 
 /**
  * Spawns mpv as a subprocess and drives it over its JSON IPC socket
@@ -34,7 +40,7 @@ private const val COMMAND_TIMEOUT_MS = 3_000L
  * unavailable.
  */
 class MpvIpcClient(
-    private val transport: MpvIpcTransport = LinuxMpvIpcTransport(),
+    private val transport: MpvIpcTransport = MpvIpcTransportFactory.create(),
 ) {
 
     private val process: Process
@@ -53,9 +59,7 @@ class MpvIpcClient(
     private val readerThread: Thread
 
     init {
-        val socketPath = Files.createTempFile("moonlight-mpv-", ".sock")
-            .also { path -> Files.deleteIfExists(path) } // mpv creates the actual socket node itself
-            .toString()
+        val socketPath = transport.createEndpointPath()
 
         process = try {
             ProcessBuilder(
@@ -71,10 +75,8 @@ class MpvIpcClient(
             throw IllegalStateException(
                 "Moonlight needs the 'mpv' command for audio playback, but it wasn't found on " +
                     "PATH. Install it via your package manager, e.g.:\n" +
-                    "  Debian/Ubuntu: sudo apt install mpv\n" +
-                    "  Fedora:        sudo dnf install mpv\n" +
-                    "  Arch:          sudo pacman -S mpv\n" +
-                    "then restart Moonlight.",
+                    mpvInstallInstructions() +
+                    "\nthen restart Moonlight.",
                 e,
             )
         }
@@ -109,7 +111,7 @@ class MpvIpcClient(
             command = args.map { arg -> arg.toJsonElement() },
             requestId = requestId,
         )
-        writeLine(Json.encodeToString(MpvCommandRequest.serializer(), request))
+        writeLine(json.encodeToString(MpvCommandRequest.serializer(), request))
 
         val reply = try {
             future.get(COMMAND_TIMEOUT_MS, TimeUnit.MILLISECONDS)
@@ -213,7 +215,7 @@ class MpvIpcClient(
 
     private fun handleLine(line: String) {
         val message = try {
-            Json.decodeFromString(MpvIpcMessage.serializer(), line)
+            json.decodeFromString(MpvIpcMessage.serializer(), line)
         } catch (e: Exception) {
             System.err.println("Could not parse mpv IPC message, ignoring: $line (${e.message})")
             return
@@ -240,6 +242,25 @@ class MpvIpcClient(
         eventListeners[eventName]?.forEach { listener -> listener(message) }
     }
 
+}
+
+private fun mpvInstallInstructions(): String {
+    val os = System.getProperty("os.name")
+        .lowercase()
+    return when {
+        os.contains("win") ->
+            "  Scoop:  scoop bucket add extras; scoop install mpv\n" +
+                "  winget: winget install --id shinchiro.mpv\n" +
+                "  or download a build from https://mpv.io/installation/ and add it to PATH"
+
+        os.contains("nux") || os.contains("nix") ->
+            "  Debian/Ubuntu: sudo apt install mpv\n" +
+                "  Fedora:        sudo dnf install mpv\n" +
+                "  Arch:          sudo pacman -S mpv"
+
+        else ->
+            "  see https://mpv.io/installation/ for install instructions"
+    }
 }
 
 private fun Any.toJsonElement(): JsonElement = when (this) {

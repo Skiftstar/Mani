@@ -5,6 +5,7 @@ import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
 import java.nio.channels.ByteChannel
 import java.nio.channels.SocketChannel
+import java.nio.file.Files
 import java.nio.file.Path
 
 private const val CONNECT_RETRY_DELAY_MS = 50L
@@ -16,6 +17,11 @@ private const val CONNECT_TIMEOUT_MS = 3_000L
  * the vlcj/JNA-backed integrations elsewhere in this codebase).
  */
 class LinuxMpvIpcTransport : MpvIpcTransport {
+
+    override fun createEndpointPath(): String =
+        Files.createTempFile("moonlight-mpv-", ".sock")
+            .also { path -> Files.deleteIfExists(path) } // mpv creates the actual socket node itself
+            .toString()
 
     override fun connect(
         socketPath: String,
