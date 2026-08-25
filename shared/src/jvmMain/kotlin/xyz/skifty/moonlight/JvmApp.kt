@@ -34,6 +34,7 @@ import moonlight.shared.generated.resources.Res
 import moonlight.shared.generated.resources.playlist_liked_songs_title
 import org.jetbrains.compose.resources.stringResource
 import xyz.skifty.moonlight.media.DesktopAudioPlayer
+import xyz.skifty.moonlight.media.mpris.MprisService
 import xyz.skifty.moonlight.ui.components.Sidebar
 import xyz.skifty.moonlight.ui.components.nowplaying.NowPlayingBottomWidget
 import xyz.skifty.moonlight.ui.screens.Screen
@@ -52,6 +53,21 @@ fun JvmApp() {
     val apiService = remember { ApiService() }
     val secureStorage = remember { SecureStorageFactory.create() }
     val appPreferences = remember { AppPreferencesFactory.create() }
+    // Only succeeds on Linux with a reachable session bus - null elsewhere, tolerated like a
+    // missing OS keyring is below.
+    val mprisService = remember {
+        runCatching {
+            MprisService(
+                audioPlayer = audioPlayer,
+                activeSongInfo = activeSongInfo,
+            )
+        }
+            .getOrNull()
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { mprisService?.close() }
+    }
 
     remember {
         SingletonImageLoader.setSafe { context ->
@@ -105,6 +121,46 @@ fun JvmApp() {
     LaunchedEffect(activeSongInfo.songId) {
         activeSongInfo.songId?.let { songId ->
             runCatching { appPreferences.save("moonlight_last_song_id", songId) }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        runCatching {
+            appPreferences.get("moonlight_volume")
+                ?.toIntOrNull()
+                ?.let { savedVolume -> audioPlayer.setVolume(savedVolume) }
+        }
+    }
+
+    LaunchedEffect(audioPlayer.volume) {
+        runCatching { appPreferences.save("moonlight_volume", audioPlayer.volume.toString()) }
+    }
+
+    LaunchedEffect(
+        audioPlayer.isPlaying,
+        audioPlayer.volume,
+        activeSongInfo.songId,
+        activeSongInfo.songName,
+        activeSongInfo.songArtist,
+        activeSongInfo.songCoverArtUrl,
+        activeSongInfo.songDurationSeconds,
+    ) {
+        mprisService?.notifyStateChanged()
+    }
+
+    // Playback (re)starting is a new "start counting from here" reference point for widgets that
+    // interpolate track position locally instead of polling it - see MprisService.notifySeeked().
+    LaunchedEffect(audioPlayer.isPlaying) {
+        if (audioPlayer.isPlaying) {
+            mprisService?.notifySeeked()
+        }
+    }
+
+    // Same idea for an explicit seek (in-app progress slider or an MPRIS client) - covers both
+    // uniformly since audioPlayer.seek()/seekFraction() bump seekCount regardless of who called them.
+    LaunchedEffect(audioPlayer.seekCount) {
+        if (audioPlayer.seekCount > 0) {
+            mprisService?.notifySeeked()
         }
     }
 
@@ -193,7 +249,6 @@ fun JvmApp() {
                     NowPlayingBottomWidget(
                         audioPlayer = audioPlayer,
                         activeSongInfo = activeSongInfo,
-                        appPreferences = appPreferences,
                     )
                 }
             }

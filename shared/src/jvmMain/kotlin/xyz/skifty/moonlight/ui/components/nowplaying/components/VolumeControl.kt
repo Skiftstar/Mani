@@ -11,7 +11,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -27,30 +26,17 @@ import moonlight.shared.generated.resources.Res
 import moonlight.shared.generated.resources.cd_volume
 import org.jetbrains.compose.resources.stringResource
 import xyz.skifty.moonlight.media.DesktopAudioPlayer
-import xyz.skifty.moonlight.preferences.AppPreferences
 
-private const val VOLUME_PREFERENCE_KEY = "moonlight_volume"
-
-/** Mute toggle plus a [MiniVolumeSlider] revealed on hover. Owns its own volume/mute/hover
- *  state - nothing outside this control needs to read or drive it, beyond seeding/persisting
- *  the volume level via [appPreferences] so it survives app restarts. */
+/** Mute toggle plus a [MiniVolumeSlider] revealed on hover. The volume level itself is owned by
+ *  [audioPlayer] (so it's a single source of truth reachable from MPRIS too) - this control only
+ *  owns its own mute/hover UI state, remembering the pre-mute level to restore on unmute. */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun VolumeControl(audioPlayer: DesktopAudioPlayer, appPreferences: AppPreferences, modifier: Modifier = Modifier) {
-    var isMuted by remember { mutableStateOf(false) }
-    var volume by remember {
-        mutableIntStateOf(
-            appPreferences.get(VOLUME_PREFERENCE_KEY)
-                ?.toIntOrNull()
-                ?.coerceIn(0, 100)
-                ?: 100,
-        )
-    } // last known UI volume, 0..100
+fun VolumeControl(audioPlayer: DesktopAudioPlayer, modifier: Modifier = Modifier) {
+    val volume = audioPlayer.volume
+    val isMuted = volume == 0
+    var preMuteVolume by remember { mutableIntStateOf(100) }
     var isVolumeHovered by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        audioPlayer.setVolume(volume)
-    }
 
     Row(
         modifier = modifier
@@ -61,13 +47,17 @@ fun VolumeControl(audioPlayer: DesktopAudioPlayer, appPreferences: AppPreference
     ) {
         IconButton(
             onClick = {
-                isMuted = !isMuted
-                audioPlayer.setVolume(if (isMuted) 0 else volume)
+                if (isMuted) {
+                    audioPlayer.setVolume(preMuteVolume)
+                } else {
+                    preMuteVolume = volume
+                    audioPlayer.setVolume(0)
+                }
             },
         ) {
             Icon(
                 imageVector = when {
-                    isMuted || volume == 0 -> Icons.AutoMirrored.Filled.VolumeOff
+                    isMuted -> Icons.AutoMirrored.Filled.VolumeOff
                     volume < 50 -> Icons.AutoMirrored.Filled.VolumeMute
                     else -> Icons.AutoMirrored.Filled.VolumeUp
                 },
@@ -76,15 +66,13 @@ fun VolumeControl(audioPlayer: DesktopAudioPlayer, appPreferences: AppPreference
         }
 
         AnimatedVisibility(visible = isVolumeHovered) {
-            val volumeFraction = if (isMuted) 0f else volume / 100f
             MiniVolumeSlider(
-                fraction = volumeFraction,
+                fraction = volume / 100f,
                 onFractionChange = { fraction ->
-                    volume = (fraction * 100).toInt()
-                        .coerceIn(0, 100)
-                    isMuted = volume == 0
-                    audioPlayer.setVolume(volume)
-                    appPreferences.save(VOLUME_PREFERENCE_KEY, volume.toString())
+                    audioPlayer.setVolume(
+                        (fraction * 100).toInt()
+                            .coerceIn(0, 100),
+                    )
                 },
                 modifier = Modifier.width(90.dp),
             )

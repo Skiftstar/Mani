@@ -52,6 +52,10 @@ kotlin {
 
             implementation(libs.vlcj)
             implementation(libs.vlcj.natives)
+
+            implementation(libs.dbus.java.core)
+            implementation(libs.dbus.java.transport.native.unixsocket)
+            implementation(libs.kotlinx.coroutinesSwing)
         }
     }
 }
