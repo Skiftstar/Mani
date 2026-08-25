@@ -25,6 +25,10 @@
         <item quantity="one">%1$d Song</item>
         <item quantity="other">%1$d Songs</item>
     </plurals>
+    <string name="playlist_column_title">Titel</string>
+    <string name="playlist_column_quality">Qualität</string>
+    <string name="cd_duration">Dauer</string>
+    <string name="playlist_badge">Playlist</string>
 
     <!-- Now playing widget -->
     <string name="cd_album_art">Album-Cover</string>

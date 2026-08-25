@@ -8,5 +8,7 @@ data class PlaylistDetails(
 
     val coverArtUrl: String?,
 
+    val ownerName: String?,
+
     val songs: List<SongInfo>,
 )

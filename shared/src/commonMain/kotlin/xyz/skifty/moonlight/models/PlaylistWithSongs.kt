@@ -12,5 +12,7 @@ data class PlaylistWithSongs(
 
     val coverArt: String? = null,
 
+    val owner: String? = null,
+
     val entry: List<ResponseSongInfo> = emptyList(),
 )

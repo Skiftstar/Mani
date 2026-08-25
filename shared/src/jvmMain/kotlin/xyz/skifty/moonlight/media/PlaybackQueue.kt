@@ -17,6 +17,14 @@ class PlaybackQueue(
     var songs: List<SongInfo> by mutableStateOf(emptyList())
         private set
 
+    // Identifies which playlist this queue was last started from - null both before any queue has
+    // started and for the Liked Songs pseudo-playlist, matching PlaylistScreen's own playlistId
+    // convention. Lets a playlist screen tell whether *it* is the one currently playing, to show
+    // a pause icon instead of play - always check alongside songs.isNotEmpty() too, since null
+    // alone doesn't distinguish "no queue yet" from "currently playing Liked Songs".
+    var currentSourceId: String? by mutableStateOf(null)
+        private set
+
     // Indices into `songs`, in play order - identity order normally, shuffled (anchored at
     // whichever song was just started) when shuffleEnabled.
     private var playOrder: List<Int> by mutableStateOf(emptyList())
@@ -39,14 +47,16 @@ class PlaybackQueue(
     val hasPrevious: Boolean
         get() = songs.isNotEmpty() && (loopMode == LoopMode.ALL || currentPosition > 0)
 
-    /** Replaces the queue with [newSongs] and starts playing [startIndex] - songs before it stay
-     *  reachable via [previous], songs after via [next] (or, if shuffle is on, everything but
-     *  [startIndex] is shuffled, with [startIndex] anchored first). */
-    fun start(newSongs: List<SongInfo>, startIndex: Int) {
+    /** Replaces the queue with [newSongs] (sourced from [sourceId] - a playlist id, or null for
+     *  Liked Songs, matching PlaylistScreen's own convention) and starts playing [startIndex] -
+     *  songs before it stay reachable via [previous], songs after via [next] (or, if shuffle is
+     *  on, everything but [startIndex] is shuffled, with [startIndex] anchored first). */
+    fun start(newSongs: List<SongInfo>, startIndex: Int, sourceId: String?) {
         if (newSongs.isEmpty() || startIndex !in newSongs.indices) {
             return
         }
         songs = newSongs
+        currentSourceId = sourceId
         playOrder = buildPlayOrder(
             size = newSongs.size,
             shuffle = shuffleEnabled,

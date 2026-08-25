@@ -92,6 +92,8 @@ class ApiService {
             coverArtUrl,
             buildUrl("/rest/stream", mapOf("id" to responseSongInfo.id, "format" to "mp3")),
             responseSongInfo.duration,
+            responseSongInfo.bitRate,
+            responseSongInfo.suffix,
         )
         return songInfo
     }
@@ -198,6 +200,7 @@ class ApiService {
             id = responsePlaylist.id,
             name = responsePlaylist.name,
             coverArtUrl = coverArtUrl,
+            ownerName = responsePlaylist.owner,
             songs = songInfos,
         )
     }

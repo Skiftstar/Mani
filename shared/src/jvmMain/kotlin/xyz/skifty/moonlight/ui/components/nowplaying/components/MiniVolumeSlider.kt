@@ -84,7 +84,7 @@ fun MiniVolumeSlider(
                     .fillMaxHeight()
                     .fillMaxWidth(clampedFraction)
                     .clip(RoundedCornerShape(trackHeight / 2))
-                    .background(MaterialTheme.colorScheme.primary),
+                    .background(MaterialTheme.colorScheme.tertiary),
             )
         }
         Box(
@@ -98,7 +98,7 @@ fun MiniVolumeSlider(
                 }
                 .size(thumbSize)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primary),
+                .background(MaterialTheme.colorScheme.tertiary),
         )
     }
 }

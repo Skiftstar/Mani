@@ -1,17 +1,17 @@
 package xyz.skifty.moonlight.ui.screens.playlist.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -20,19 +20,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import moonlight.shared.generated.resources.Res
-import moonlight.shared.generated.resources.cd_play
 import moonlight.shared.generated.resources.cd_playlist_cover
+import moonlight.shared.generated.resources.playlist_badge
 import moonlight.shared.generated.resources.playlist_song_count
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import xyz.skifty.moonlight.media.PlaylistDetails
 
-/** Cover art (or a heart fallback for the Liked Songs pseudo-playlist) + title/song count/Play button. */
+/** Cover art (or a heart fallback for the Liked Songs pseudo-playlist) + a "Playlist" badge,
+ *  large title, and owner (if the server reports one)/song count. */
 @Composable
-fun PlaylistHeader(details: PlaylistDetails, onPlayClick: () -> Unit, modifier: Modifier = Modifier) {
+fun PlaylistHeader(details: PlaylistDetails, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -64,29 +66,32 @@ fun PlaylistHeader(details: PlaylistDetails, onPlayClick: () -> Unit, modifier: 
                 )
             }
         }
-        Column {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(
+                modifier = Modifier
+                    .border(1.dp, MaterialTheme.colorScheme.onSurfaceVariant, RoundedCornerShape(4.dp))
+                    .padding(horizontal = 8.dp, vertical = 2.dp),
+            ) {
+                Text(
+                    text = stringResource(Res.string.playlist_badge),
+                    style = MaterialTheme.typography.labelMedium,
+                )
+            }
             Text(
                 text = details.name,
-                style = MaterialTheme.typography.headlineMedium,
+                style = MaterialTheme.typography.displayMedium,
+                fontWeight = FontWeight.Black,
+            )
+
+            val songCount = pluralStringResource(
+                Res.plurals.playlist_song_count,
+                details.songs.size,
+                details.songs.size,
             )
             Text(
-                text = pluralStringResource(
-                    Res.plurals.playlist_song_count,
-                    details.songs.size,
-                    details.songs.size,
-                ),
+                text = details.ownerName?.let { ownerName -> "$ownerName • $songCount" } ?: songCount,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-
-        FilledIconButton(
-            onClick = onPlayClick,
-            modifier = Modifier.size(56.dp),
-        ) {
-            Icon(
-                imageVector = Icons.Filled.PlayArrow,
-                contentDescription = stringResource(Res.string.cd_play),
             )
         }
     }

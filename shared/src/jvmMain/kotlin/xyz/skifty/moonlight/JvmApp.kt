@@ -1,6 +1,5 @@
 package xyz.skifty.moonlight
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,6 +43,7 @@ import xyz.skifty.moonlight.ui.screens.home.HomeScreen
 import xyz.skifty.moonlight.ui.screens.login.LoginScreen
 import xyz.skifty.moonlight.ui.screens.login.components.LanguageDropdown
 import xyz.skifty.moonlight.ui.screens.playlist.PlaylistScreen
+import xyz.skifty.moonlight.ui.theme.MoonlightTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -206,10 +206,9 @@ fun JvmApp() {
     }
 
     key(appLanguage) {
-        MaterialTheme {
+        MoonlightTheme {
             Column(
                 modifier = Modifier
-                    .background(MaterialTheme.colorScheme.primaryContainer)
                     .safeContentPadding()
                     .fillMaxSize(),
             ) {
@@ -269,6 +268,8 @@ fun JvmApp() {
 
                             Screen.LikedSongs -> PlaylistScreen(
                                 apiService = apiService,
+                                audioPlayer = audioPlayer,
+                                activeSongInfo = activeSongInfo,
                                 playbackQueue = playbackQueue,
                                 playlistId = null,
                                 playlistName = stringResource(Res.string.playlist_liked_songs_title),
@@ -276,6 +277,8 @@ fun JvmApp() {
 
                             is Screen.Playlist -> PlaylistScreen(
                                 apiService = apiService,
+                                audioPlayer = audioPlayer,
+                                activeSongInfo = activeSongInfo,
                                 playbackQueue = playbackQueue,
                                 playlistId = currentScreen.playlistId,
                                 playlistName = currentScreen.playlistName,

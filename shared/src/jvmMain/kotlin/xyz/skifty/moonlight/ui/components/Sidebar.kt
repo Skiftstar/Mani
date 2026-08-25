@@ -93,12 +93,6 @@ fun Sidebar(
                     contentDescription = stringResource(Res.string.cd_history),
                 )
             }
-            IconButton(onClick = { /* TODO: albums */ }) {
-                Icon(
-                    imageVector = Icons.Filled.Album,
-                    contentDescription = stringResource(Res.string.cd_albums),
-                )
-            }
 
             LazyColumn(
                 modifier = Modifier
