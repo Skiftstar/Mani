@@ -17,17 +17,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import xyz.skifty.moonlight.api.ApiService
-import xyz.skifty.moonlight.media.DesktopAudioPlayer
+import xyz.skifty.moonlight.media.PlaybackQueue
 import xyz.skifty.moonlight.media.PlaylistDetails
-import xyz.skifty.moonlight.media.SongInfo
 import xyz.skifty.moonlight.ui.screens.playlist.components.PlaylistHeader
 import xyz.skifty.moonlight.ui.screens.playlist.components.PlaylistSongRow
 
 @Composable
 fun PlaylistScreen(
     apiService: ApiService,
-    audioPlayer: DesktopAudioPlayer,
-    activeSongInfo: SongInfo,
+    playbackQueue: PlaybackQueue,
     playlistId: String?,
     playlistName: String,
 ) {
@@ -62,13 +60,18 @@ fun PlaylistScreen(
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
-            PlaylistHeader(details = currentDetails)
+            PlaylistHeader(
+                details = currentDetails,
+                onPlayClick = {
+                    playbackQueue.start(currentDetails.songs, 0)
+                },
+            )
             Column {
-                for (songInfo in currentDetails.songs) {
+                for ((index, songInfo) in currentDetails.songs.withIndex()) {
                     PlaylistSongRow(
                         songInfo = songInfo,
                         onClick = {
-                            audioPlayer.play(songInfo, activeSongInfo)
+                            playbackQueue.start(currentDetails.songs, index)
                         },
                     )
                 }

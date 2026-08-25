@@ -26,6 +26,34 @@ class DesktopAudioPlayer {
     var seekCount: Int by mutableStateOf(0)
         private set
 
+    // Bumped whenever a track finishes playing naturally - JvmApp watches this to advance the
+    // playback queue, same "Compose-observable counter as an event hook" shape as seekCount.
+    var trackFinishedCount: Int by mutableStateOf(0)
+        private set
+
+    // Bumped whenever libVLC *confirms* playback has genuinely (re)started - a fresh play, a
+    // resume, or a skip straight from one playing track to another. Deliberately not the same
+    // thing as isPlaying: going from "playing track A" to "playing track B" never actually flips
+    // isPlaying's value (true -> true), so it wouldn't retrigger a LaunchedEffect keyed on it -
+    // this counter always ticks, and only once the position it'd report is actually trustworthy
+    // (unlike the optimistic isPlaying writes below, which fire before libVLC has loaded anything).
+    var playbackStartedCount: Int by mutableStateOf(0)
+        private set
+
+    // The position to report as of the most recent playbackStartedCount bump (ms) - see
+    // lastConfirmedStartPositionMs and pendingStartPositionMs below.
+    var lastConfirmedStartPositionMs: Long by mutableStateOf(0L)
+        private set
+
+    // Set right before play() issues a fresh play(url) - which always starts a brand new track at
+    // position 0 - so the playing() callback below can report a definitely-correct position
+    // immediately, instead of querying player.status().time(): during a media switch, that can
+    // still briefly reflect the *previous* track's time right as playing() fires, which is exactly
+    // the kind of stale read that made MPRIS position widgets look like they'd skipped into the
+    // new track already part-way through. Left null for resume()/togglePlayPause(), where the
+    // media doesn't change and a live query is safe.
+    private var pendingStartPositionMs: Long? = null
+
     init {
         player.events()
             .addMediaPlayerEventListener(
@@ -37,6 +65,10 @@ class DesktopAudioPlayer {
                     // self-corrects isPlaying whenever it drifts from what's really playing.
                     override fun playing(mp: MediaPlayer) {
                         isPlaying = true
+                        lastConfirmedStartPositionMs = pendingStartPositionMs
+                            ?: currentPosition()
+                        pendingStartPositionMs = null
+                        playbackStartedCount++
                     }
 
                     override fun paused(mp: MediaPlayer) {
@@ -49,6 +81,7 @@ class DesktopAudioPlayer {
 
                     override fun finished(mp: MediaPlayer) {
                         isPlaying = false
+                        trackFinishedCount++
                     }
 
                     override fun error(mp: MediaPlayer) {
@@ -70,6 +103,7 @@ class DesktopAudioPlayer {
     }
 
     fun play(songInfo: SongInfo, activeSongInfo: SongInfo) {
+        pendingStartPositionMs = 0L
         player.media()
             .play(songInfo.songPlaybackUrl ?: "")
         activeSongInfo.setSong(songInfo)
@@ -129,10 +163,13 @@ class DesktopAudioPlayer {
         seekCount++
     }
 
-    /** Get current playback time in milliseconds */
+    /** Get current playback time in milliseconds - libVLC reports -1 when it's not yet known
+     *  (e.g. right as a new track is still opening/buffering), which is never a meaningful
+     *  position for any caller, in-app or MPRIS. */
     fun currentPosition(): Long {
         return player.status()
             .time()
+            .coerceAtLeast(0)
     }
 
     fun setVolume(volume: Int) {

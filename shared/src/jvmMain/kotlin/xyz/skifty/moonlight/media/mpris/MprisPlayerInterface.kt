@@ -26,14 +26,20 @@ interface MprisPlayerInterface : DBusInterface {
     @DBusBoundProperty
     fun getPlaybackStatus(): String
 
-    @DBusBoundProperty(emitChangeSignal = EmitChangeSignal.CONST)
+    @DBusBoundProperty
     fun getLoopStatus(): String
+
+    @DBusBoundProperty
+    fun setLoopStatus(value: String)
 
     @DBusBoundProperty(emitChangeSignal = EmitChangeSignal.CONST)
     fun getRate(): Double
 
-    @DBusBoundProperty(emitChangeSignal = EmitChangeSignal.CONST)
+    @DBusBoundProperty
     fun isShuffle(): Boolean
+
+    @DBusBoundProperty
+    fun setShuffle(shuffle: Boolean)
 
     @DBusBoundProperty
     fun getMetadata(): Map<String, Variant<*>>
@@ -55,11 +61,11 @@ interface MprisPlayerInterface : DBusInterface {
     @DBusBoundProperty(emitChangeSignal = EmitChangeSignal.CONST)
     fun getMaximumRate(): Double
 
-    // No queue behind Next()/Previous() yet - advertised as unsupported rather than misleading.
-    @DBusBoundProperty(emitChangeSignal = EmitChangeSignal.CONST)
+    // Reflects whether the playback queue actually has a next/previous track.
+    @DBusBoundProperty
     fun isCanGoNext(): Boolean
 
-    @DBusBoundProperty(emitChangeSignal = EmitChangeSignal.CONST)
+    @DBusBoundProperty
     fun isCanGoPrevious(): Boolean
 
     @DBusBoundProperty(emitChangeSignal = EmitChangeSignal.CONST)

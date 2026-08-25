@@ -31,6 +31,7 @@ import moonlight.shared.generated.resources.cd_fullscreen
 import moonlight.shared.generated.resources.cd_queue
 import org.jetbrains.compose.resources.stringResource
 import xyz.skifty.moonlight.media.DesktopAudioPlayer
+import xyz.skifty.moonlight.media.PlaybackQueue
 import xyz.skifty.moonlight.media.SongInfo
 import xyz.skifty.moonlight.ui.components.nowplaying.components.PlaybackButtons
 import xyz.skifty.moonlight.ui.components.nowplaying.components.ProgressSlider
@@ -39,7 +40,7 @@ import xyz.skifty.moonlight.ui.components.nowplaying.components.VolumeControl
 
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun NowPlayingBottomWidget(audioPlayer: DesktopAudioPlayer, activeSongInfo: SongInfo) {
+fun NowPlayingBottomWidget(audioPlayer: DesktopAudioPlayer, activeSongInfo: SongInfo, playbackQueue: PlaybackQueue) {
 
     var positionMs by remember { mutableLongStateOf(0L) }
     var durationMs by remember { mutableLongStateOf(1L) } // avoid /0
@@ -82,6 +83,7 @@ fun NowPlayingBottomWidget(audioPlayer: DesktopAudioPlayer, activeSongInfo: Song
 
                 PlaybackButtons(
                     audioPlayer = audioPlayer,
+                    playbackQueue = playbackQueue,
                     positionMs = positionMs,
                     durationMs = durationMs,
                 )

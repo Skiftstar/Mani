@@ -8,11 +8,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,11 +31,14 @@ import moonlight.shared.generated.resources.cd_shuffle
 import org.jetbrains.compose.resources.stringResource
 import xyz.skifty.moonlight.ext.toDurationLabel
 import xyz.skifty.moonlight.media.DesktopAudioPlayer
+import xyz.skifty.moonlight.media.LoopMode
+import xyz.skifty.moonlight.media.PlaybackQueue
 
 /** Shuffle/previous/play-pause/next/loop transport controls plus the position/duration text. */
 @Composable
 fun PlaybackButtons(
     audioPlayer: DesktopAudioPlayer,
+    playbackQueue: PlaybackQueue,
     positionMs: Long,
     durationMs: Long,
     modifier: Modifier = Modifier
@@ -43,14 +48,22 @@ fun PlaybackButtons(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        IconButton(onClick = { /* TODO: shuffle */ }) {
+        IconButton(onClick = { playbackQueue.setShuffle(!playbackQueue.shuffleEnabled) }) {
             Icon(
                 imageVector = Icons.Filled.Shuffle,
                 contentDescription = stringResource(Res.string.cd_shuffle),
+                tint = if (playbackQueue.shuffleEnabled) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    LocalContentColor.current
+                },
             )
         }
 
-        IconButton(onClick = { /* TODO: previous */ }) {
+        IconButton(
+            onClick = { playbackQueue.previous() },
+            enabled = playbackQueue.hasPrevious,
+        ) {
             Icon(
                 imageVector = Icons.Filled.SkipPrevious,
                 contentDescription = stringResource(Res.string.cd_previous),
@@ -66,17 +79,29 @@ fun PlaybackButtons(
             )
         }
 
-        IconButton(onClick = { /* TODO: next */ }) {
+        IconButton(
+            onClick = { playbackQueue.next() },
+            enabled = playbackQueue.hasNext,
+        ) {
             Icon(
                 imageVector = Icons.Filled.SkipNext,
                 contentDescription = stringResource(Res.string.cd_next),
             )
         }
 
-        IconButton(onClick = { /* TODO: loop */ }) {
+        IconButton(onClick = { playbackQueue.cycleLoopMode() }) {
             Icon(
-                imageVector = Icons.Filled.Repeat,
+                imageVector = if (playbackQueue.loopMode == LoopMode.ONE) {
+                    Icons.Filled.RepeatOne
+                } else {
+                    Icons.Filled.Repeat
+                },
                 contentDescription = stringResource(Res.string.cd_loop),
+                tint = if (playbackQueue.loopMode != LoopMode.OFF) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    LocalContentColor.current
+                },
             )
         }
 

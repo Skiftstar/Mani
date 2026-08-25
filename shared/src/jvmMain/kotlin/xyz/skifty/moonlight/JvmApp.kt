@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
 import coil3.network.ktor3.KtorNetworkFetcherFactory
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import xyz.skifty.moonlight.api.ApiService
 import xyz.skifty.moonlight.ext.toLocale
@@ -34,6 +35,7 @@ import moonlight.shared.generated.resources.Res
 import moonlight.shared.generated.resources.playlist_liked_songs_title
 import org.jetbrains.compose.resources.stringResource
 import xyz.skifty.moonlight.media.DesktopAudioPlayer
+import xyz.skifty.moonlight.media.PlaybackQueue
 import xyz.skifty.moonlight.media.mpris.MprisService
 import xyz.skifty.moonlight.ui.components.Sidebar
 import xyz.skifty.moonlight.ui.components.nowplaying.NowPlayingBottomWidget
@@ -50,6 +52,12 @@ fun JvmApp() {
 
     val audioPlayer = remember { DesktopAudioPlayer() }
     val activeSongInfo = remember { SongInfo() }
+    val playbackQueue = remember {
+        PlaybackQueue(
+            audioPlayer = audioPlayer,
+            activeSongInfo = activeSongInfo,
+        )
+    }
     val apiService = remember { ApiService() }
     val secureStorage = remember { SecureStorageFactory.create() }
     val appPreferences = remember { AppPreferencesFactory.create() }
@@ -60,6 +68,7 @@ fun JvmApp() {
             MprisService(
                 audioPlayer = audioPlayer,
                 activeSongInfo = activeSongInfo,
+                playbackQueue = playbackQueue,
             )
         }
             .getOrNull()
@@ -144,15 +153,36 @@ fun JvmApp() {
         activeSongInfo.songArtist,
         activeSongInfo.songCoverArtUrl,
         activeSongInfo.songDurationSeconds,
+        playbackQueue.currentPosition,
+        playbackQueue.shuffleEnabled,
+        playbackQueue.loopMode,
     ) {
         mprisService?.notifyStateChanged()
     }
 
+    // A track finishing naturally is the queue's cue to advance (or replay, on loop-one).
+    LaunchedEffect(audioPlayer.trackFinishedCount) {
+        if (audioPlayer.trackFinishedCount > 0) {
+            playbackQueue.onTrackFinished()
+        }
+    }
+
     // Playback (re)starting is a new "start counting from here" reference point for widgets that
     // interpolate track position locally instead of polling it - see MprisService.notifySeeked().
-    LaunchedEffect(audioPlayer.isPlaying) {
-        if (audioPlayer.isPlaying) {
-            mprisService?.notifySeeked()
+    // Watches playbackStartedCount rather than isPlaying: skipping straight from one playing track
+    // to another never actually flips isPlaying's value, so it wouldn't retrigger this effect.
+    //
+    // Re-sends notifyStateChanged() here too, immediately before notifySeeked(), rather than
+    // relying on the LaunchedEffect above to have already done so: activeSongInfo's fields change
+    // synchronously the instant a new track is requested, well before libVLC actually confirms
+    // playback started - so that effect fires early, with the *new* track's metadata but no
+    // matching position yet. Sending both together, in this order, right when the position is
+    // finally trustworthy gives listeners one consistent "here's the new track, here's where it
+    // actually is" update instead of racing two separately-timed broadcasts.
+    LaunchedEffect(audioPlayer.playbackStartedCount) {
+        if (audioPlayer.playbackStartedCount > 0) {
+            mprisService?.notifyStateChanged()
+            mprisService?.notifySeeked(audioPlayer.lastConfirmedStartPositionMs * 1000)
         }
     }
 
@@ -161,6 +191,17 @@ fun JvmApp() {
     LaunchedEffect(audioPlayer.seekCount) {
         if (audioPlayer.seekCount > 0) {
             mprisService?.notifySeeked()
+        }
+    }
+
+    // Belt-and-braces re-anchor while playing: some MPRIS clients interpolate position locally
+    // using their own clock, which can drift from the real audio clock over time between anchors -
+    // periodically re-sending the live position bounds how far that can drift, and self-heals if a
+    // client ever misses one of the event-driven notifySeeked() calls above.
+    LaunchedEffect(audioPlayer.isPlaying) {
+        while (audioPlayer.isPlaying) {
+            mprisService?.notifySeeked()
+            delay(3000)
         }
     }
 
@@ -228,16 +269,14 @@ fun JvmApp() {
 
                             Screen.LikedSongs -> PlaylistScreen(
                                 apiService = apiService,
-                                audioPlayer = audioPlayer,
-                                activeSongInfo = activeSongInfo,
+                                playbackQueue = playbackQueue,
                                 playlistId = null,
                                 playlistName = stringResource(Res.string.playlist_liked_songs_title),
                             )
 
                             is Screen.Playlist -> PlaylistScreen(
                                 apiService = apiService,
-                                audioPlayer = audioPlayer,
-                                activeSongInfo = activeSongInfo,
+                                playbackQueue = playbackQueue,
                                 playlistId = currentScreen.playlistId,
                                 playlistName = currentScreen.playlistName,
                             )
@@ -249,6 +288,7 @@ fun JvmApp() {
                     NowPlayingBottomWidget(
                         audioPlayer = audioPlayer,
                         activeSongInfo = activeSongInfo,
+                        playbackQueue = playbackQueue,
                     )
                 }
             }

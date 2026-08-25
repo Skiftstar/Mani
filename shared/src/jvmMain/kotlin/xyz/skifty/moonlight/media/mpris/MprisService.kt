@@ -1,15 +1,12 @@
 package xyz.skifty.moonlight.media.mpris
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.swing.Swing
 import org.freedesktop.dbus.DBusPath
 import org.freedesktop.dbus.connections.impl.DBusConnectionBuilder
 import org.freedesktop.dbus.interfaces.Properties
 import org.freedesktop.dbus.types.Variant
 import xyz.skifty.moonlight.media.DesktopAudioPlayer
+import xyz.skifty.moonlight.media.LoopMode
+import xyz.skifty.moonlight.media.PlaybackQueue
 import xyz.skifty.moonlight.media.SongInfo
 import kotlin.math.roundToInt
 
@@ -29,13 +26,16 @@ private const val NO_TRACK_PATH = "/org/mpris/MediaPlayer2/TrackList/NoTrack"
 class MprisService(
     private val audioPlayer: DesktopAudioPlayer,
     private val activeSongInfo: SongInfo,
+    private val playbackQueue: PlaybackQueue,
 ) : MprisRoot, MprisPlayerInterface {
 
-    // Incoming MPRIS calls arrive on dbus-java's own connection thread - hop onto the Compose/Swing
-    // UI thread before touching audioPlayer/activeSongInfo, so state mutation always happens from a
-    // consistent thread.
-    private val scope = CoroutineScope(Dispatchers.Swing + SupervisorJob())
-
+    // Incoming MPRIS calls arrive on dbus-java's own connection thread, and are handled directly
+    // on it rather than hopped onto the Compose/Swing UI thread: dbus-java doesn't send the D-Bus
+    // reply until this method returns, and MPRIS clients (Noctalia included) commonly re-query
+    // state immediately after a command's reply arrives - dispatching the actual mutation onto a
+    // different thread and returning immediately let that follow-up query race the mutation and
+    // see stale state. Writing straight to audioPlayer/activeSongInfo's Compose state from this
+    // thread is safe - it's exactly what DesktopAudioPlayer's own vlcj event listener already does.
     private val connection = DBusConnectionBuilder.forSessionBus()
         .build()
 
@@ -66,37 +66,35 @@ class MprisService(
     // --- org.mpris.MediaPlayer2.Player ---
 
     override fun Next() {
-        // No queue behind this yet - see isCanGoNext().
+        playbackQueue.next()
     }
 
     override fun Previous() {
-        // No queue behind this yet - see isCanGoPrevious().
+        playbackQueue.previous()
     }
 
     override fun Pause() {
-        scope.launch { audioPlayer.pauseOnly() }
+        audioPlayer.pauseOnly()
     }
 
     override fun PlayPause() {
-        scope.launch { audioPlayer.togglePlayPause() }
+        audioPlayer.togglePlayPause()
     }
 
     override fun Stop() {
-        scope.launch { audioPlayer.stop(activeSongInfo) }
+        audioPlayer.stop(activeSongInfo)
     }
 
     override fun Play() {
-        scope.launch { audioPlayer.resume() }
+        audioPlayer.resume()
     }
 
     override fun Seek(offsetMicroseconds: Long) {
         // audioPlayer.seek() bumps seekCount itself - JvmApp's watcher on that covers notifying
         // MPRIS listeners here too, regardless of who asked for the seek.
-        scope.launch {
-            val newPositionMs = (audioPlayer.currentPosition() + offsetMicroseconds / 1000)
-                .coerceAtLeast(0)
-            audioPlayer.seek(newPositionMs)
-        }
+        val newPositionMs = (audioPlayer.currentPosition() + offsetMicroseconds / 1000)
+            .coerceAtLeast(0)
+        audioPlayer.seek(newPositionMs)
     }
 
     override fun SetPosition(trackId: DBusPath, positionMicroseconds: Long) {
@@ -104,7 +102,7 @@ class MprisService(
         if (trackId.path != trackObjectPath(currentSongId)) {
             return
         }
-        scope.launch { audioPlayer.seek(positionMicroseconds / 1000) }
+        audioPlayer.seek(positionMicroseconds / 1000)
     }
 
     override fun OpenUri(uri: String) {
@@ -117,9 +115,29 @@ class MprisService(
         else -> "Paused"
     }
 
-    override fun getLoopStatus(): String = "None"
+    override fun getLoopStatus(): String = when (playbackQueue.loopMode) {
+        LoopMode.OFF -> "None"
+        LoopMode.ALL -> "Playlist"
+        LoopMode.ONE -> "Track"
+    }
+
+    override fun setLoopStatus(value: String) {
+        playbackQueue.setLoopMode(
+            when (value) {
+                "Track" -> LoopMode.ONE
+                "Playlist" -> LoopMode.ALL
+                else -> LoopMode.OFF
+            },
+        )
+    }
+
     override fun getRate(): Double = 1.0
-    override fun isShuffle(): Boolean = false
+
+    override fun isShuffle(): Boolean = playbackQueue.shuffleEnabled
+
+    override fun setShuffle(shuffle: Boolean) {
+        playbackQueue.setShuffle(shuffle)
+    }
 
     override fun getMetadata(): Map<String, Variant<*>> {
         val songId = activeSongInfo.songId
@@ -148,9 +166,7 @@ class MprisService(
     override fun getVolume(): Double = audioPlayer.volume / 100.0
 
     override fun setVolume(volume: Double) {
-        scope.launch {
-            audioPlayer.setVolume((volume * 100).roundToInt())
-        }
+        audioPlayer.setVolume((volume * 100).roundToInt())
     }
 
     override fun getPosition(): Long = audioPlayer.currentPosition() * 1000
@@ -158,15 +174,15 @@ class MprisService(
     override fun getMinimumRate(): Double = 1.0
     override fun getMaximumRate(): Double = 1.0
 
-    override fun isCanGoNext(): Boolean = false
-    override fun isCanGoPrevious(): Boolean = false
+    override fun isCanGoNext(): Boolean = playbackQueue.hasNext
+    override fun isCanGoPrevious(): Boolean = playbackQueue.hasPrevious
     override fun isCanPlay(): Boolean = true
     override fun isCanPause(): Boolean = true
     override fun isCanSeek(): Boolean = true
     override fun isCanControl(): Boolean = true
 
-    /** Call whenever playback state/track/volume changes, so listeners update immediately instead
-     *  of waiting on their own polling. */
+    /** Call whenever playback state/track/volume/queue changes, so listeners update immediately
+     *  instead of waiting on their own polling. */
     fun notifyStateChanged() {
         try {
             val changedProperties = mapOf(
@@ -176,6 +192,10 @@ class MprisService(
                     /* signature = */ "a{sv}",
                 ),
                 "Volume" to Variant(getVolume()),
+                "LoopStatus" to Variant(getLoopStatus()),
+                "Shuffle" to Variant(isShuffle()),
+                "CanGoNext" to Variant(isCanGoNext()),
+                "CanGoPrevious" to Variant(isCanGoPrevious()),
             )
             connection.sendMessage(
                 Properties.PropertiesChanged(
@@ -193,13 +213,18 @@ class MprisService(
     /** Call whenever the position changes in a way a listener can't derive by just letting time
      *  pass (an explicit seek, or playback starting/resuming - see [MprisPlayerInterface.Seeked]).
      *  Widgets that interpolate position locally (as the spec expects) use this as their cue to
-     *  (re-)anchor that interpolation, rather than polling `Position` continuously. */
-    fun notifySeeked() {
+     *  (re-)anchor that interpolation, rather than polling `Position` continuously.
+     *
+     *  Defaults to a live [getPosition] read, which is accurate for an explicit seek within the
+     *  already-loaded track. Pass [positionMicroseconds] explicitly for a just-confirmed playback
+     *  start instead - right as a track switch is confirmed, a live read of the underlying player's
+     *  position can still briefly reflect the *previous* track. */
+    fun notifySeeked(positionMicroseconds: Long = getPosition()) {
         try {
             connection.sendMessage(
                 MprisPlayerInterface.Seeked(
                     /* path = */ OBJECT_PATH,
-                    /* positionMicroseconds = */ getPosition(),
+                    /* positionMicroseconds = */ positionMicroseconds,
                 ),
             )
         } catch (e: Exception) {
