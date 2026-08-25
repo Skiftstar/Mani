@@ -1,0 +1,33 @@
+<resources>
+    <string name="app_name">Moonlight</string>
+
+    <!-- Login screen -->
+    <string name="login_subtitle">Bei deinem Navidrome-Server anmelden</string>
+    <string name="login_server_url_label">Server-URL</string>
+    <string name="login_username_label">Benutzername</string>
+    <string name="login_password_label">Passwort</string>
+    <string name="cd_show_password">Passwort anzeigen</string>
+    <string name="cd_hide_password">Passwort verbergen</string>
+    <string name="login_button">Anmelden</string>
+    <string name="login_failed">Anmeldung fehlgeschlagen</string>
+    <string name="login_save_failed">Angemeldet, aber Anmeldedaten konnten nicht sicher gespeichert werden: %1$s</string>
+
+    <!-- Sidebar -->
+    <string name="cd_home">Startseite</string>
+    <string name="cd_history">Verlauf</string>
+    <string name="cd_albums">Alben</string>
+
+    <!-- Now playing widget -->
+    <string name="cd_album_art">Album-Cover</string>
+    <string name="unknown_title">Unbekannter Titel</string>
+    <string name="unknown_artist">Unbekannter Interpret</string>
+    <string name="cd_shuffle">Zufallswiedergabe</string>
+    <string name="cd_previous">Vorheriger Titel</string>
+    <string name="cd_play">Wiedergabe</string>
+    <string name="cd_pause">Pause</string>
+    <string name="cd_next">Nächster Titel</string>
+    <string name="cd_loop">Wiederholen</string>
+    <string name="cd_volume">Lautstärke</string>
+    <string name="cd_queue">Warteschlange</string>
+    <string name="cd_fullscreen">Vollbild</string>
+</resources>

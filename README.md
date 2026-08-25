@@ -1,13 +1,17 @@
 This is a Kotlin Multiplatform project targeting Android, Desktop (JVM).
 
-* [/composeApp](./composeApp/src) is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-  - [commonMain](./composeApp/src/commonMain/kotlin) is for code that’s common for all targets.
-  - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-    For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-    the [iosMain](./composeApp/src/iosMain/kotlin) folder would be the right place for such calls.
-    Similarly, if you want to edit the Desktop (JVM) specific part, the [jvmMain](./composeApp/src/jvmMain/kotlin)
-    folder is the appropriate location.
+* [/shared](./shared/src) contains the code shared across the Android and desktop
+  apps - UI (Compose Multiplatform) and business logic alike. It contains several
+  subfolders:
+  - [commonMain](./shared/src/commonMain/kotlin) is for code that's common for all targets.
+  - Other folders are for Kotlin code that will be compiled for only the platform indicated
+    in the folder name. For example, the [jvmMain](./shared/src/jvmMain/kotlin) folder is
+    for the Desktop (JVM) specific part, and [androidMain](./shared/src/androidMain/kotlin)
+    for the Android-specific part.
+* [/androidApp](./androidApp/src) is the thin entry-point module that builds into the
+  Android application (`MainActivity`, manifest, launcher icons) - it depends on `shared`.
+* [/desktopApp](./desktopApp/src) is the thin entry-point module that builds into the
+  desktop (JVM) application (`main()`, packaging config) - it depends on `shared`.
 
 ### Build and Run Android Application
 
@@ -15,11 +19,11 @@ To build and run the development version of the Android app, use the run configu
 in your IDE’s toolbar or build it directly from the terminal:
 - on macOS/Linux
   ```shell
-  ./gradlew :composeApp:assembleDebug
+  ./gradlew :androidApp:assembleDebug
   ```
 - on Windows
   ```shell
-  .\gradlew.bat :composeApp:assembleDebug
+  .\gradlew.bat :androidApp:assembleDebug
   ```
 
 ### Build and Run Desktop (JVM) Application
@@ -28,11 +32,11 @@ To build and run the development version of the desktop app, use the run configu
 in your IDE’s toolbar or run it directly from the terminal:
 - on macOS/Linux
   ```shell
-  ./gradlew :composeApp:run
+  ./gradlew :desktopApp:run
   ```
 - on Windows
   ```shell
-  .\gradlew.bat :composeApp:run
+  .\gradlew.bat :desktopApp:run
   ```
 
 ---
