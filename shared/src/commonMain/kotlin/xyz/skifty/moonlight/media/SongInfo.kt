@@ -29,6 +29,8 @@ class SongInfo {
     var songFormat by mutableStateOf<String?>(null)
         private set
 
+    var starred by mutableStateOf(false)
+
     fun setSong(
         id: String,
         name: String,
@@ -37,7 +39,8 @@ class SongInfo {
         playbackUrl: String,
         durationSeconds: Int?,
         bitRateKbps: Int?,
-        format: String?
+        format: String?,
+        starred: Boolean,
     ) {
         songId = id
         songName = name
@@ -47,6 +50,7 @@ class SongInfo {
         songDurationSeconds = durationSeconds
         songBitRateKbps = bitRateKbps
         songFormat = format
+        this.starred = starred
     }
 
     fun setSong(songInfo: SongInfo) {
@@ -58,6 +62,7 @@ class SongInfo {
         songDurationSeconds = songInfo.songDurationSeconds
         songBitRateKbps = songInfo.songBitRateKbps
         songFormat = songInfo.songFormat
+        starred = songInfo.starred
     }
 
     fun clear() {
@@ -69,5 +74,6 @@ class SongInfo {
         songDurationSeconds = null
         songBitRateKbps = null
         songFormat = null
+        starred = false
     }
 }

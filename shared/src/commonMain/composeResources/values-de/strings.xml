@@ -43,4 +43,14 @@
     <string name="cd_volume">Lautstärke</string>
     <string name="cd_queue">Warteschlange</string>
     <string name="cd_fullscreen">Vollbild</string>
+
+    <!-- Search -->
+    <string name="search_placeholder">Songs suchen</string>
+    <string name="cd_search">Suche</string>
+    <string name="cd_clear_search">Suche löschen</string>
+    <string name="search_no_results">Keine Songs gefunden</string>
+
+    <!-- Starred column -->
+    <string name="cd_star">Zu Lieblingssongs hinzufügen</string>
+    <string name="cd_unstar">Aus Lieblingssongs entfernen</string>
 </resources>

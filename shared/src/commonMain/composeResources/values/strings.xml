@@ -43,4 +43,14 @@
     <string name="cd_volume">Volume</string>
     <string name="cd_queue">Queue</string>
     <string name="cd_fullscreen">Fullscreen</string>
+
+    <!-- Search -->
+    <string name="search_placeholder">Search songs</string>
+    <string name="cd_search">Search</string>
+    <string name="cd_clear_search">Clear search</string>
+    <string name="search_no_results">No songs found</string>
+
+    <!-- Starred column -->
+    <string name="cd_star">Add to Liked Songs</string>
+    <string name="cd_unstar">Remove from Liked Songs</string>
 </resources>

@@ -21,9 +21,9 @@ import xyz.skifty.moonlight.media.DesktopAudioPlayer
 import xyz.skifty.moonlight.media.PlaybackQueue
 import xyz.skifty.moonlight.media.PlaylistDetails
 import xyz.skifty.moonlight.media.SongInfo
+import xyz.skifty.moonlight.ui.components.PlaylistSongTable
 import xyz.skifty.moonlight.ui.screens.playlist.components.PlaylistActionsRow
 import xyz.skifty.moonlight.ui.screens.playlist.components.PlaylistHeader
-import xyz.skifty.moonlight.ui.screens.playlist.components.PlaylistSongTable
 
 @Composable
 fun PlaylistScreen(
@@ -77,6 +77,7 @@ fun PlaylistScreen(
                 songs = currentDetails.songs,
                 audioPlayer = audioPlayer,
                 activeSongInfo = activeSongInfo,
+                apiService = apiService,
                 onSongClick = { index ->
                     playbackQueue.start(currentDetails.songs, index, playlistId)
                 },

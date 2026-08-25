@@ -11,5 +11,6 @@ data class ResponseSongInfo(
     val duration: Int? = null,
     val coverArt: String? = null,
     val bitRate: Int? = null,
-    val suffix: String? = null
+    val suffix: String? = null,
+    val starred: String? = null,
 )

@@ -1,4 +1,4 @@
-package xyz.skifty.moonlight.ui.screens.playlist.components
+package xyz.skifty.moonlight.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,26 +15,51 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import moonlight.shared.generated.resources.Res
 import moonlight.shared.generated.resources.cd_duration
 import moonlight.shared.generated.resources.playlist_column_quality
 import moonlight.shared.generated.resources.playlist_column_title
 import org.jetbrains.compose.resources.stringResource
+import xyz.skifty.moonlight.api.ApiService
 import xyz.skifty.moonlight.media.DesktopAudioPlayer
 import xyz.skifty.moonlight.media.SongInfo
 
-/** Column headers followed by one [PlaylistSongRow] per song. */
+/** Column headers followed by one [PlaylistSongRow] per song. Owns the star/unstar toggle
+ *  (calling [apiService] and optimistically flipping [SongInfo.starred], reverting it if the
+ *  request fails) so every screen using this table gets identical behavior for free. */
 @Composable
 fun PlaylistSongTable(
     songs: List<SongInfo>,
     audioPlayer: DesktopAudioPlayer,
     activeSongInfo: SongInfo,
+    apiService: ApiService,
     onSongClick: (index: Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val coroutineScope = rememberCoroutineScope()
+
+    fun toggleStar(songInfo: SongInfo) {
+        val songId = songInfo.songId
+            ?: return
+        val wasStarred = songInfo.starred
+        songInfo.starred = !wasStarred
+        coroutineScope.launch {
+            val result = if (wasStarred) {
+                apiService.unstar(songId)
+            } else {
+                apiService.star(songId)
+            }
+            if (result.isFailure) {
+                songInfo.starred = wasStarred
+            }
+        }
+    }
+
     Column(modifier = modifier) {
         Row(
             modifier = Modifier
@@ -79,6 +104,7 @@ fun PlaylistSongTable(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            Box(modifier = Modifier.size(32.dp))
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
@@ -90,6 +116,9 @@ fun PlaylistSongTable(
                 activeSongInfo = activeSongInfo,
                 onClick = {
                     onSongClick(index)
+                },
+                onToggleStar = {
+                    toggleStar(songInfo)
                 },
             )
         }

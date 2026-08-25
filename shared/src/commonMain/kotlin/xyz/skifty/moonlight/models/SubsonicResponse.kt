@@ -9,5 +9,6 @@ data class SubsonicResponse(
     val playlists: PlaylistsWrapper? = null,
     val playlist: PlaylistWithSongs? = null,
     val song: ResponseSongInfo? = null,
-    val error: SubsonicError? = null
+    val searchResult3: SearchResult3? = null,
+    val error: SubsonicError? = null,
 )

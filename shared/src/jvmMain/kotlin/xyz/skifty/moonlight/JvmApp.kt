@@ -3,6 +3,7 @@ package xyz.skifty.moonlight
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -36,6 +37,8 @@ import org.jetbrains.compose.resources.stringResource
 import xyz.skifty.moonlight.media.DesktopAudioPlayer
 import xyz.skifty.moonlight.media.PlaybackQueue
 import xyz.skifty.moonlight.media.mpris.MprisService
+import xyz.skifty.moonlight.ui.components.AutoHidingScrollbar
+import xyz.skifty.moonlight.ui.components.SearchBar
 import xyz.skifty.moonlight.ui.components.Sidebar
 import xyz.skifty.moonlight.ui.components.nowplaying.NowPlayingBottomWidget
 import xyz.skifty.moonlight.ui.screens.Screen
@@ -43,6 +46,7 @@ import xyz.skifty.moonlight.ui.screens.home.HomeScreen
 import xyz.skifty.moonlight.ui.screens.login.LoginScreen
 import xyz.skifty.moonlight.ui.screens.login.components.LanguageDropdown
 import xyz.skifty.moonlight.ui.screens.playlist.PlaylistScreen
+import xyz.skifty.moonlight.ui.screens.search.SearchScreen
 import xyz.skifty.moonlight.ui.theme.MoonlightTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -94,6 +98,44 @@ fun JvmApp() {
 
     // null = still checking for a saved session
     var screen by remember { mutableStateOf<Screen?>(null) }
+
+    // Search bar text, hoisted here (not modeled as data on Screen.Search) since it's transient
+    // input, not navigation state - see SearchBar/SearchScreen.
+    var searchQuery by remember { mutableStateOf("") }
+
+    // The screen that was active right before searchQuery went from empty to non-empty - restored
+    // when searchQuery goes back to empty. null only before any search has started.
+    var screenBeforeSearch by remember { mutableStateOf<Screen?>(null) }
+
+    // All non-search navigation (sidebar clicks, login success) goes through this rather than
+    // assigning `screen` directly, so it can also drop any in-progress search - without this, a
+    // sidebar click while mid-search would leave `screen` and `searchQuery` out of sync (content
+    // switches away from Search, but the search bar still shows the old query and would restore
+    // the *pre-search* screen, not the one just navigated to, the next time it's cleared).
+    fun navigate(target: Screen) {
+        screen = target
+        searchQuery = ""
+        screenBeforeSearch = null
+    }
+
+    // Wired to SearchBar's onQueryChange - synchronous (not a LaunchedEffect) so the empty <->
+    // non-empty transition and the screen it triggers always happen together, with no
+    // recomposition-timing gap between them. Deleting the last character by hand and tapping the
+    // trailing clear button both simply call this with "", so both behave identically.
+    fun onSearchQueryChange(newQuery: String) {
+        val wasEmpty = searchQuery.isEmpty()
+        val isEmpty = newQuery.isEmpty()
+        if (wasEmpty && !isEmpty) {
+            if (screen != Screen.Search) {
+                screenBeforeSearch = screen
+            }
+            screen = Screen.Search
+        } else if (!wasEmpty && isEmpty) {
+            screen = screenBeforeSearch ?: Screen.Home
+            screenBeforeSearch = null
+        }
+        searchQuery = newQuery
+    }
 
     // Compose resources pick their language from java.util.Locale.getDefault() fresh on every
     // lookup, so switching languages means changing that (there's no public per-composition
@@ -240,54 +282,100 @@ fun JvmApp() {
                     modifier = Modifier.weight(1f)
                         .fillMaxWidth(),
                 ) {
-                    if (screen == Screen.Home || screen == Screen.LikedSongs || screen is Screen.Playlist) {
+                    if (screen == Screen.Home || screen == Screen.LikedSongs || screen == Screen.Search || screen is Screen.Playlist) {
                         Sidebar(
                             apiService = apiService,
-                            onHomeClick = { screen = Screen.Home },
-                            onLikedSongsClick = { screen = Screen.LikedSongs },
+                            onHomeClick = { navigate(Screen.Home) },
+                            onLikedSongsClick = { navigate(Screen.LikedSongs) },
                             onPlaylistClick = { playlist ->
-                                screen = Screen.Playlist(playlist.id, playlist.name)
+                                navigate(Screen.Playlist(playlist.id, playlist.name))
                             },
                         )
                     }
 
-                    val scrollState = rememberScrollState()
                     Column(
                         modifier = Modifier.weight(1f)
-                            .verticalScroll(scrollState)
-                            .fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
+                            .fillMaxHeight(),
                     ) {
-                        when (val currentScreen = screen) {
-                            null -> Box(
-                                modifier = Modifier.fillMaxSize(),
-                                contentAlignment = Alignment.Center,
+                        // Hidden while still restoring a saved session (screen == null, no
+                        // ApiService session yet) and on the login screen itself (searching
+                        // would fail either way). Fixed here, above the scrollable Column below,
+                        // so it stays visible at the top of the content area - next to the
+                        // sidebar, not above it - regardless of how far the screen content itself
+                        // is scrolled.
+                        if (screen != null && screen != Screen.Login) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
                             ) {
-                                CircularProgressIndicator()
+                                SearchBar(
+                                    query = searchQuery,
+                                    onQueryChange = ::onSearchQueryChange,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                        }
+
+                        val scrollState = rememberScrollState()
+                        Box(
+                            modifier = Modifier.weight(1f)
+                                .fillMaxWidth(),
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .verticalScroll(scrollState),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                when (val currentScreen = screen) {
+                                    null -> Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        CircularProgressIndicator()
+                                    }
+
+                                    Screen.Home -> HomeScreen()
+                                    Screen.Login -> LoginScreen(
+                                        apiService,
+                                        onLoginSuccess = { navigate(Screen.Home) },
+                                    )
+
+                                    Screen.LikedSongs -> PlaylistScreen(
+                                        apiService = apiService,
+                                        audioPlayer = audioPlayer,
+                                        activeSongInfo = activeSongInfo,
+                                        playbackQueue = playbackQueue,
+                                        playlistId = null,
+                                        playlistName = stringResource(Res.string.playlist_liked_songs_title),
+                                    )
+
+                                    is Screen.Playlist -> PlaylistScreen(
+                                        apiService = apiService,
+                                        audioPlayer = audioPlayer,
+                                        activeSongInfo = activeSongInfo,
+                                        playbackQueue = playbackQueue,
+                                        playlistId = currentScreen.playlistId,
+                                        playlistName = currentScreen.playlistName,
+                                    )
+
+                                    Screen.Search -> SearchScreen(
+                                        apiService = apiService,
+                                        audioPlayer = audioPlayer,
+                                        activeSongInfo = activeSongInfo,
+                                        playbackQueue = playbackQueue,
+                                        query = searchQuery,
+                                        scrollState = scrollState,
+                                    )
+                                }
                             }
 
-                            Screen.Home -> HomeScreen()
-                            Screen.Login -> LoginScreen(
-                                apiService,
-                                onLoginSuccess = { screen = Screen.Home },
-                            )
-
-                            Screen.LikedSongs -> PlaylistScreen(
-                                apiService = apiService,
-                                audioPlayer = audioPlayer,
-                                activeSongInfo = activeSongInfo,
-                                playbackQueue = playbackQueue,
-                                playlistId = null,
-                                playlistName = stringResource(Res.string.playlist_liked_songs_title),
-                            )
-
-                            is Screen.Playlist -> PlaylistScreen(
-                                apiService = apiService,
-                                audioPlayer = audioPlayer,
-                                activeSongInfo = activeSongInfo,
-                                playbackQueue = playbackQueue,
-                                playlistId = currentScreen.playlistId,
-                                playlistName = currentScreen.playlistName,
+                            AutoHidingScrollbar(
+                                scrollState = scrollState,
+                                modifier = Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .fillMaxHeight(),
                             )
                         }
                     }

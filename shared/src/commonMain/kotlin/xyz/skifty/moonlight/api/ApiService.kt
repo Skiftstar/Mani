@@ -86,14 +86,15 @@ class ApiService {
             buildUrl("/rest/getCoverArt", mapOf("id" to coverArtId, "size" to "300"))
         }
         songInfo.setSong(
-            responseSongInfo.id,
-            responseSongInfo.title,
-            responseSongInfo.artist,
-            coverArtUrl,
-            buildUrl("/rest/stream", mapOf("id" to responseSongInfo.id, "format" to "mp3")),
-            responseSongInfo.duration,
-            responseSongInfo.bitRate,
-            responseSongInfo.suffix,
+            id = responseSongInfo.id,
+            name = responseSongInfo.title,
+            artist = responseSongInfo.artist,
+            coverArtUrl = coverArtUrl,
+            playbackUrl = buildUrl("/rest/stream", mapOf("id" to responseSongInfo.id, "format" to "mp3")),
+            durationSeconds = responseSongInfo.duration,
+            bitRateKbps = responseSongInfo.bitRate,
+            format = responseSongInfo.suffix,
+            starred = responseSongInfo.starred != null,
         )
         return songInfo
     }
@@ -213,6 +214,56 @@ class ApiService {
             ?: error("Song $songId not found")
 
         return toSongInfo(responseSongInfo)
+    }
+
+    /** Songs-only Subsonic search (`artistCount=0&albumCount=0` - no album/artist results are
+     *  fetched or shown). [songCount] caps how many song hits come back per call, [songOffset]
+     *  pages through further results (see SearchScreen's infinite-scroll pagination); degrades to
+     *  an empty list on any non-2xx response rather than throwing, so a bad/incomplete query
+     *  never crashes the search screen. */
+    suspend fun search3(query: String, songCount: Int = 25, songOffset: Int = 0): List<SongInfo> {
+        val result = httpClient.get(
+            buildUrl(
+                "/rest/search3",
+                mapOf(
+                    "query" to query,
+                    "songCount" to songCount.toString(),
+                    "songOffset" to songOffset.toString(),
+                    "artistCount" to "0",
+                    "albumCount" to "0",
+                ),
+            ),
+        )
+
+        val songInfos: MutableList<SongInfo> = mutableListOf()
+        if (result.status.isSuccess()) {
+            val subsonicResponseWrapper: SubsonicResponseWrapper = result.body()
+
+            for (responseSongInfo in subsonicResponseWrapper.response.searchResult3?.song.orEmpty()) {
+                songInfos.add(toSongInfo(responseSongInfo))
+            }
+        }
+
+        return songInfos
+    }
+
+    /** Stars [songId] server-side (makes it appear in getStarredSongs()/Liked Songs). */
+    suspend fun star(songId: String): Result<Unit> = setStarred("/rest/star", songId)
+
+    /** Unstars [songId] server-side. */
+    suspend fun unstar(songId: String): Result<Unit> = setStarred("/rest/unstar", songId)
+
+    private suspend fun setStarred(path: String, songId: String): Result<Unit> {
+        return try {
+            val result = httpClient.get(buildUrl(path, mapOf("id" to songId)))
+            if (result.status.isSuccess()) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Server returned HTTP ${result.status.value}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception("Could not reach server: ${e.message}", e))
+        }
     }
 
 }

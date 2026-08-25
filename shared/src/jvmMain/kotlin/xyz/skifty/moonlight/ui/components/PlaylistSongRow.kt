@@ -1,4 +1,4 @@
-package xyz.skifty.moonlight.ui.screens.playlist.components
+package xyz.skifty.moonlight.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -12,9 +12,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -38,6 +41,8 @@ import moonlight.shared.generated.resources.Res
 import moonlight.shared.generated.resources.cd_album_art
 import moonlight.shared.generated.resources.cd_pause
 import moonlight.shared.generated.resources.cd_play
+import moonlight.shared.generated.resources.cd_star
+import moonlight.shared.generated.resources.cd_unstar
 import moonlight.shared.generated.resources.unknown_artist
 import moonlight.shared.generated.resources.unknown_title
 import org.jetbrains.compose.resources.stringResource
@@ -46,9 +51,10 @@ import xyz.skifty.moonlight.media.DesktopAudioPlayer
 import xyz.skifty.moonlight.media.SongInfo
 
 /** One row of [PlaylistSongTable] - row number (swaps to a play/pause icon on hover), cover
- *  thumbnail + title/artist, quality, and duration. Whenever this row's song is the one currently
- *  loaded in [audioPlayer] (per [activeSongInfo]), its text is tinted the accent color and
- *  clicking it toggles play/pause instead of restarting the track from the beginning. */
+ *  thumbnail + title/artist, quality, duration, and a star/unstar toggle. Whenever this row's
+ *  song is the one currently loaded in [audioPlayer] (per [activeSongInfo]), its text is tinted
+ *  the accent color and clicking it toggles play/pause instead of restarting the track from the
+ *  beginning. */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun PlaylistSongRow(
@@ -57,6 +63,7 @@ fun PlaylistSongRow(
     audioPlayer: DesktopAudioPlayer,
     activeSongInfo: SongInfo,
     onClick: () -> Unit,
+    onToggleStar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var isHovered by remember { mutableStateOf(false) }
@@ -149,6 +156,20 @@ fun PlaylistSongRow(
             textAlign = TextAlign.End,
             modifier = Modifier.width(48.dp),
         )
+
+        IconButton(
+            onClick = onToggleStar,
+            modifier = Modifier.size(32.dp),
+        ) {
+            Icon(
+                imageVector = if (songInfo.starred) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                contentDescription = stringResource(
+                    if (songInfo.starred) Res.string.cd_unstar else Res.string.cd_star,
+                ),
+                modifier = Modifier.size(20.dp),
+                tint = if (songInfo.starred) MaterialTheme.colorScheme.primary else secondaryColor,
+            )
+        }
     }
 }
 
