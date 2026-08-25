@@ -28,17 +28,27 @@ private val MoonlightDarkColorScheme = darkColorScheme(
     outlineVariant = SpotifyOutlineVariant,
 )
 
+/** [fillContainer] wraps [content] in a full-size [Surface] (the default) - needed wherever
+ *  content doesn't set every color explicitly itself, since that Surface is what wires up
+ *  LocalContentColor for the whole subtree (a plain Modifier.background() paints the right color
+ *  but never sets it, so Text/Icon composables would default to black). Pass `false` for content
+ *  that already sets every color explicitly and isn't meant to fill its parent - e.g. TitleBar,
+ *  which composes outside JvmApp's own MoonlightTheme call and would otherwise fight JvmApp's own
+ *  content for space if both tried to fill the same window. */
 @Composable
-fun MoonlightTheme(content: @Composable () -> Unit) {
+fun MoonlightTheme(
+    fillContainer: Boolean = true,
+    content: @Composable () -> Unit,
+) {
     MaterialTheme(colorScheme = MoonlightDarkColorScheme) {
-        // A plain Modifier.background() paints the right color but never sets
-        // LocalContentColor, so Text/Icon composables outside of any Surface would still
-        // default to black - Surface is what actually wires the background to a matching
-        // "on" content color for the whole subtree.
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background,
-        ) {
+        if (fillContainer) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.background,
+            ) {
+                content()
+            }
+        } else {
             content()
         }
     }

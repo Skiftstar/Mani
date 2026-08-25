@@ -53,4 +53,10 @@
     <!-- Starred column -->
     <string name="cd_star">Add to Liked Songs</string>
     <string name="cd_unstar">Remove from Liked Songs</string>
+
+    <!-- Title bar -->
+    <string name="cd_minimize_window">Minimize</string>
+    <string name="cd_maximize_window">Maximize</string>
+    <string name="cd_restore_window">Restore</string>
+    <string name="cd_close_window">Close</string>
 </resources>
