@@ -20,18 +20,23 @@ class SongInfo {
 
     var songPlaybackUrl by mutableStateOf<String?>(null)
 
+    var songDurationSeconds by mutableStateOf<Int?>(null)
+        private set
+
     fun setSong(
         id: String,
         name: String,
         artist: String,
         coverArtUrl: String?,
-        playbackUrl: String
+        playbackUrl: String,
+        durationSeconds: Int?
     ) {
         songId = id
         songName = name
         songArtist = artist
         songCoverArtUrl = coverArtUrl
         songPlaybackUrl = playbackUrl
+        songDurationSeconds = durationSeconds
     }
 
     fun setSong(songInfo: SongInfo) {
@@ -40,6 +45,7 @@ class SongInfo {
         songArtist = songInfo.songArtist
         songCoverArtUrl = songInfo.songCoverArtUrl
         songPlaybackUrl = songInfo.songPlaybackUrl
+        songDurationSeconds = songInfo.songDurationSeconds
     }
 
     fun clear() {
@@ -48,5 +54,6 @@ class SongInfo {
         songArtist = null
         songCoverArtUrl = null
         songPlaybackUrl = null
+        songDurationSeconds = null
     }
 }

@@ -48,6 +48,15 @@ class DesktopAudioPlayer {
         isPlaying = true
     }
 
+    /** Loads [songInfo] without starting playback - used to restore the last-played song as
+     *  paused on app startup, without auto-playing it. */
+    fun prepare(songInfo: SongInfo, activeSongInfo: SongInfo) {
+        player.media()
+            .prepare(songInfo.songPlaybackUrl ?: "")
+        activeSongInfo.setSong(songInfo)
+        isPlaying = false
+    }
+
     fun stop(activeSongInfo: SongInfo) {
         player.controls()
             .stop()
@@ -55,10 +64,17 @@ class DesktopAudioPlayer {
         isPlaying = false
     }
 
-    fun pause() {
-        player.controls()
-            .pause()
-        isPlaying = !player.status().isPlaying
+    fun togglePlayPause() {
+        // controls().pause() only toggles an already-playing media - it won't start one that
+        // was merely prepare()d, so the first resume after prepare() must go through play().
+        if (isPlaying) {
+            player.controls()
+                .pause()
+        } else {
+            player.controls()
+                .play()
+        }
+        isPlaying = player.status().isPlaying
     }
 
     fun seek(ms: Long) {

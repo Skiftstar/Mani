@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -26,15 +27,30 @@ import moonlight.shared.generated.resources.Res
 import moonlight.shared.generated.resources.cd_volume
 import org.jetbrains.compose.resources.stringResource
 import xyz.skifty.moonlight.media.DesktopAudioPlayer
+import xyz.skifty.moonlight.preferences.AppPreferences
+
+private const val VOLUME_PREFERENCE_KEY = "moonlight_volume"
 
 /** Mute toggle plus a [MiniVolumeSlider] revealed on hover. Owns its own volume/mute/hover
- *  state - nothing outside this control needs to read or drive it. */
+ *  state - nothing outside this control needs to read or drive it, beyond seeding/persisting
+ *  the volume level via [appPreferences] so it survives app restarts. */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun VolumeControl(audioPlayer: DesktopAudioPlayer, modifier: Modifier = Modifier) {
+fun VolumeControl(audioPlayer: DesktopAudioPlayer, appPreferences: AppPreferences, modifier: Modifier = Modifier) {
     var isMuted by remember { mutableStateOf(false) }
-    var volume by remember { mutableIntStateOf(100) } // last known UI volume, 0..100
+    var volume by remember {
+        mutableIntStateOf(
+            appPreferences.get(VOLUME_PREFERENCE_KEY)
+                ?.toIntOrNull()
+                ?.coerceIn(0, 100)
+                ?: 100,
+        )
+    } // last known UI volume, 0..100
     var isVolumeHovered by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        audioPlayer.setVolume(volume)
+    }
 
     Row(
         modifier = modifier
@@ -68,6 +84,7 @@ fun VolumeControl(audioPlayer: DesktopAudioPlayer, modifier: Modifier = Modifier
                         .coerceIn(0, 100)
                     isMuted = volume == 0
                     audioPlayer.setVolume(volume)
+                    appPreferences.save(VOLUME_PREFERENCE_KEY, volume.toString())
                 },
                 modifier = Modifier.width(90.dp),
             )

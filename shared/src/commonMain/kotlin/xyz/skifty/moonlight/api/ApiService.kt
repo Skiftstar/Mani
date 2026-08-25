@@ -12,7 +12,10 @@ import io.ktor.http.isSuccess
 import io.ktor.http.takeFrom
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
+import xyz.skifty.moonlight.media.PlaylistDetails
+import xyz.skifty.moonlight.media.PlaylistInfo
 import xyz.skifty.moonlight.media.SongInfo
+import xyz.skifty.moonlight.models.ResponseSongInfo
 import xyz.skifty.moonlight.models.SubsonicResponseWrapper
 import xyz.skifty.moonlight.util.generateSalt
 import xyz.skifty.moonlight.util.md5Hex
@@ -77,6 +80,22 @@ class ApiService {
         }
     }
 
+    private fun toSongInfo(responseSongInfo: ResponseSongInfo): SongInfo {
+        val songInfo = SongInfo()
+        val coverArtUrl = responseSongInfo.coverArt?.let { coverArtId ->
+            buildUrl("/rest/getCoverArt", mapOf("id" to coverArtId, "size" to "300"))
+        }
+        songInfo.setSong(
+            responseSongInfo.id,
+            responseSongInfo.title,
+            responseSongInfo.artist,
+            coverArtUrl,
+            buildUrl("/rest/stream", mapOf("id" to responseSongInfo.id, "format" to "mp3")),
+            responseSongInfo.duration,
+        )
+        return songInfo
+    }
+
     private fun buildUrl(path: String, extraParams: Map<String, String> = emptyMap()): String {
         val s =
             session ?: error("ApiService not configured — call configure() or restoreSession() first")
@@ -128,22 +147,69 @@ class ApiService {
             val subsonicResponseWrapper: SubsonicResponseWrapper = result.body()
 
             for (responseSongInfo in subsonicResponseWrapper.response.starred2?.song.orEmpty()) {
-                val songInfo = SongInfo()
-                val coverArtUrl = responseSongInfo.coverArt?.let { coverArtId ->
-                    buildUrl("/rest/getCoverArt", mapOf("id" to coverArtId, "size" to "300"))
-                }
-                songInfo.setSong(
-                    responseSongInfo.id,
-                    responseSongInfo.title,
-                    responseSongInfo.artist,
-                    coverArtUrl,
-                    buildUrl("/rest/stream", mapOf("id" to responseSongInfo.id, "format" to "mp3")),
-                )
-                songInfos.add(songInfo)
+                songInfos.add(toSongInfo(responseSongInfo))
             }
         }
 
         return songInfos
+    }
+
+    suspend fun getPlaylists(): List<PlaylistInfo> {
+        val result = httpClient.get(buildUrl("/rest/getPlaylists"))
+
+        val playlistInfos: MutableList<PlaylistInfo> = mutableListOf()
+        if (result.status.isSuccess()) {
+            val subsonicResponseWrapper: SubsonicResponseWrapper = result.body()
+
+            for (responsePlaylist in subsonicResponseWrapper.response.playlists?.playlist.orEmpty()) {
+                val coverArtUrl = responsePlaylist.coverArt?.let { coverArtId ->
+                    buildUrl("/rest/getCoverArt", mapOf("id" to coverArtId, "size" to "300"))
+                }
+                playlistInfos.add(
+                    PlaylistInfo(
+                        id = responsePlaylist.id,
+                        name = responsePlaylist.name,
+                        songCount = responsePlaylist.songCount,
+                        coverArtUrl = coverArtUrl,
+                    ),
+                )
+            }
+        }
+
+        return playlistInfos
+    }
+
+    suspend fun getPlaylist(playlistId: String): PlaylistDetails {
+        val result = httpClient.get(buildUrl("/rest/getPlaylist", mapOf("id" to playlistId)))
+
+        val subsonicResponseWrapper: SubsonicResponseWrapper = result.body()
+        val responsePlaylist = subsonicResponseWrapper.response.playlist
+            ?: error("Playlist $playlistId not found")
+
+        val songInfos: MutableList<SongInfo> = mutableListOf()
+        for (responseSongInfo in responsePlaylist.entry) {
+            songInfos.add(toSongInfo(responseSongInfo))
+        }
+
+        val coverArtUrl = responsePlaylist.coverArt?.let { coverArtId ->
+            buildUrl("/rest/getCoverArt", mapOf("id" to coverArtId, "size" to "300"))
+        }
+        return PlaylistDetails(
+            id = responsePlaylist.id,
+            name = responsePlaylist.name,
+            coverArtUrl = coverArtUrl,
+            songs = songInfos,
+        )
+    }
+
+    suspend fun getSong(songId: String): SongInfo {
+        val result = httpClient.get(buildUrl("/rest/getSong", mapOf("id" to songId)))
+
+        val subsonicResponseWrapper: SubsonicResponseWrapper = result.body()
+        val responseSongInfo = subsonicResponseWrapper.response.song
+            ?: error("Song $songId not found")
+
+        return toSongInfo(responseSongInfo)
     }
 
 }

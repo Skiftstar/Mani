@@ -25,10 +25,14 @@ import xyz.skifty.moonlight.api.ApiService
 import xyz.skifty.moonlight.ext.toLocale
 import xyz.skifty.moonlight.i18n.AppLanguage
 import xyz.skifty.moonlight.media.SongInfo
+import xyz.skifty.moonlight.preferences.AppPreferencesFactory
 import xyz.skifty.moonlight.security.SecureStorageFactory
 import java.util.Locale
 
 import androidx.compose.foundation.layout.Row
+import moonlight.shared.generated.resources.Res
+import moonlight.shared.generated.resources.playlist_liked_songs_title
+import org.jetbrains.compose.resources.stringResource
 import xyz.skifty.moonlight.media.DesktopAudioPlayer
 import xyz.skifty.moonlight.ui.components.Sidebar
 import xyz.skifty.moonlight.ui.components.nowplaying.NowPlayingBottomWidget
@@ -36,6 +40,7 @@ import xyz.skifty.moonlight.ui.screens.Screen
 import xyz.skifty.moonlight.ui.screens.home.HomeScreen
 import xyz.skifty.moonlight.ui.screens.login.LoginScreen
 import xyz.skifty.moonlight.ui.screens.login.components.LanguageDropdown
+import xyz.skifty.moonlight.ui.screens.playlist.PlaylistScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,6 +51,7 @@ fun JvmApp() {
     val activeSongInfo = remember { SongInfo() }
     val apiService = remember { ApiService() }
     val secureStorage = remember { SecureStorageFactory.create() }
+    val appPreferences = remember { AppPreferencesFactory.create() }
 
     remember {
         SingletonImageLoader.setSafe { context ->
@@ -84,6 +90,22 @@ fun JvmApp() {
             System.err.println("Could not restore saved session: ${e.message}")
             Screen.Login
         }
+
+        if (screen == Screen.Home) {
+            // Restore the last-played song as paused, not auto-played - a stale id or an
+            // unreachable server here shouldn't block startup either.
+            runCatching {
+                appPreferences.get("moonlight_last_song_id")?.let { lastSongId ->
+                    audioPlayer.prepare(apiService.getSong(lastSongId), activeSongInfo)
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(activeSongInfo.songId) {
+        activeSongInfo.songId?.let { songId ->
+            runCatching { appPreferences.save("moonlight_last_song_id", songId) }
+        }
     }
 
     key(appLanguage) {
@@ -116,8 +138,15 @@ fun JvmApp() {
                     modifier = Modifier.weight(1f)
                         .fillMaxWidth(),
                 ) {
-                    if (screen == Screen.Home) {
-                        Sidebar(onHomeClick = { screen = Screen.Home })
+                    if (screen == Screen.Home || screen == Screen.LikedSongs || screen is Screen.Playlist) {
+                        Sidebar(
+                            apiService = apiService,
+                            onHomeClick = { screen = Screen.Home },
+                            onLikedSongsClick = { screen = Screen.LikedSongs },
+                            onPlaylistClick = { playlist ->
+                                screen = Screen.Playlist(playlist.id, playlist.name)
+                            },
+                        )
                     }
 
                     val scrollState = rememberScrollState()
@@ -135,10 +164,26 @@ fun JvmApp() {
                                 CircularProgressIndicator()
                             }
 
-                            Screen.Home -> HomeScreen(apiService, audioPlayer, activeSongInfo)
+                            Screen.Home -> HomeScreen()
                             Screen.Login -> LoginScreen(
                                 apiService,
                                 onLoginSuccess = { screen = Screen.Home },
+                            )
+
+                            Screen.LikedSongs -> PlaylistScreen(
+                                apiService = apiService,
+                                audioPlayer = audioPlayer,
+                                activeSongInfo = activeSongInfo,
+                                playlistId = null,
+                                playlistName = stringResource(Res.string.playlist_liked_songs_title),
+                            )
+
+                            is Screen.Playlist -> PlaylistScreen(
+                                apiService = apiService,
+                                audioPlayer = audioPlayer,
+                                activeSongInfo = activeSongInfo,
+                                playlistId = currentScreen.playlistId,
+                                playlistName = currentScreen.playlistName,
                             )
                         }
                     }
@@ -148,6 +193,7 @@ fun JvmApp() {
                     NowPlayingBottomWidget(
                         audioPlayer = audioPlayer,
                         activeSongInfo = activeSongInfo,
+                        appPreferences = appPreferences,
                     )
                 }
             }

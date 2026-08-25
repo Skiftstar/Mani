@@ -14,8 +14,17 @@
 
     <!-- Sidebar -->
     <string name="cd_home">Startseite</string>
+    <string name="cd_liked_songs">Lieblingssongs</string>
     <string name="cd_history">Verlauf</string>
     <string name="cd_albums">Alben</string>
+    <string name="cd_playlist_cover">Playlist-Cover</string>
+
+    <!-- Playlist screen -->
+    <string name="playlist_liked_songs_title">Lieblingssongs</string>
+    <plurals name="playlist_song_count">
+        <item quantity="one">%1$d Song</item>
+        <item quantity="other">%1$d Songs</item>
+    </plurals>
 
     <!-- Now playing widget -->
     <string name="cd_album_art">Album-Cover</string>

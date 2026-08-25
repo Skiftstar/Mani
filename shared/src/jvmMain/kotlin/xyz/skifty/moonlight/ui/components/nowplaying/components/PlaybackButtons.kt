@@ -27,6 +27,7 @@ import moonlight.shared.generated.resources.cd_play
 import moonlight.shared.generated.resources.cd_previous
 import moonlight.shared.generated.resources.cd_shuffle
 import org.jetbrains.compose.resources.stringResource
+import xyz.skifty.moonlight.ext.toDurationLabel
 import xyz.skifty.moonlight.media.DesktopAudioPlayer
 
 /** Shuffle/previous/play-pause/next/loop transport controls plus the position/duration text. */
@@ -56,7 +57,7 @@ fun PlaybackButtons(
             )
         }
 
-        IconButton(onClick = { audioPlayer.pause() }) {
+        IconButton(onClick = { audioPlayer.togglePlayPause() }) {
             Icon(
                 imageVector = if (audioPlayer.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                 contentDescription = stringResource(
@@ -82,20 +83,10 @@ fun PlaybackButtons(
         Spacer(modifier = Modifier.width(4.dp))
 
         Text(
-            text = "${formatDuration(positionMs)}/${formatDuration(durationMs)}",
+            text = "${(positionMs / 1000).toInt().toDurationLabel()}/${(durationMs / 1000).toInt().toDurationLabel()}",
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.width(76.dp),
         )
     }
-}
-
-private fun formatDuration(ms: Long): String {
-    val totalSeconds = (ms / 1000).coerceAtLeast(0)
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    return "$minutes:${
-        seconds.toString()
-            .padStart(2, '0')
-    }"
 }
