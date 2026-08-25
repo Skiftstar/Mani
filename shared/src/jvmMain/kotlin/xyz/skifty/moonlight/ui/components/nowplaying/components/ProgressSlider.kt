@@ -18,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -76,6 +77,13 @@ fun ProgressSlider(
     )
 
     var widthPx by remember { mutableFloatStateOf(0f) }
+    // pointerInput(Unit) below sets up its gesture-handling coroutine once and never restarts it
+    // (its key never changes) - reading the plain maxLengthMs parameter directly from inside would
+    // permanently freeze commitSeek() to whatever value was current the very first time this
+    // composable was placed (in practice, the very first track's length), silently wrong for every
+    // track after that. rememberUpdatedState keeps a reference commitSeek() can read fresh through
+    // even from that long-lived coroutine.
+    val currentMaxLengthMs by rememberUpdatedState(maxLengthMs)
     val density = LocalDensity.current
     val thumbSizePx = with(density) { thumbSize.toPx() }
     // Centers the thumb on the track's vertical midpoint - negative since the thumb is taller
@@ -93,7 +101,7 @@ fun ProgressSlider(
         // player (unlike the previous vlcj backend, where this distinction mattered) - kept as a
         // fraction here purely because that's what this slider already tracks internally, sparing
         // it a duration lookup to convert to an absolute position.
-        setProgress((sliderFraction * maxLengthMs).toLong())
+        setProgress((sliderFraction * currentMaxLengthMs).toLong())
         audioPlayer.seekFraction(sliderFraction)
     }
 

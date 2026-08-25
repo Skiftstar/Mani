@@ -61,6 +61,16 @@ class DesktopAudioPlayer {
     // media doesn't change and a live read is safe.
     private var pendingStartPositionMs: Long? = null
 
+    // Set right before play()/prepare() issues a fresh loadfile, to whichever isPlaying value that
+    // load is meant to end up at - consumed by the "file-loaded" handler below to reassert it once
+    // the new track is confirmed loaded. Needed because switching tracks makes mpv end the
+    // *outgoing* file first (loadfile's "replace" doesn't wait for a clean stop), which fires
+    // end-file for it same as a genuine stop/EOF would - end-file's own isPlaying = false would
+    // otherwise stick, since mpv's "pause" property change notification (the other thing that
+    // writes isPlaying) only fires on an actual value *change*, and it never truly changes here if
+    // the player was already playing before the switch and still is straight after it.
+    private var pendingIsPlaying: Boolean? = null
+
     init {
         // mpv pushes property changes asynchronously on its own IPC reader thread rather than us
         // polling for them - writing straight to Compose state from that thread is safe, exactly
@@ -79,6 +89,8 @@ class DesktopAudioPlayer {
         mpv.onEvent("file-loaded") {
             lastConfirmedStartPositionMs = pendingStartPositionMs ?: cachedPositionMs
             pendingStartPositionMs = null
+            pendingIsPlaying?.let { playing -> isPlaying = playing }
+            pendingIsPlaying = null
             playbackStartedCount++
         }
 
@@ -94,10 +106,16 @@ class DesktopAudioPlayer {
 
     fun play(songInfo: SongInfo, activeSongInfo: SongInfo) {
         pendingStartPositionMs = 0L
+        pendingIsPlaying = true
         // A fresh loadfile always starts at 0 - clear the cache immediately rather than waiting
         // for mpv's own "time-pos" event for the new track to arrive, so a poll landing in that
         // gap (see NowPlayingBottomWidget) can't briefly read the *previous* track's position.
         cachedPositionMs = 0L
+        // Same reasoning for duration: left uncleared, it keeps reporting the *previous* track's
+        // length until mpv's own "duration" event for the new one arrives - and seekFraction()
+        // scales a seek against whatever length() currently returns, so a seek issued in that gap
+        // would land at completely the wrong position (wrong track's length, right fraction).
+        cachedDurationMs = 0L
         mpv.sendCommand("loadfile", songInfo.songPlaybackUrl ?: "", "replace")
         activeSongInfo.setSong(songInfo)
         isPlaying = true
@@ -107,7 +125,9 @@ class DesktopAudioPlayer {
      *  paused on app startup, without auto-playing it. */
     fun prepare(songInfo: SongInfo, activeSongInfo: SongInfo) {
         pendingStartPositionMs = 0L
+        pendingIsPlaying = false
         cachedPositionMs = 0L
+        cachedDurationMs = 0L
         // The third positional argument (playlist insertion index) must be explicitly -1 for the
         // fourth (per-file options) to be honored, since mpv 0.38.0 - see the loadfile docs.
         // Setting pause=yes here as a load-time option, rather than a follow-up set_property

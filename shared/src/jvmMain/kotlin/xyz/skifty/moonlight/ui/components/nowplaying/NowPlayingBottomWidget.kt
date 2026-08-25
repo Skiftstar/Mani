@@ -48,6 +48,17 @@ fun NowPlayingBottomWidget(audioPlayer: DesktopAudioPlayer, activeSongInfo: Song
     var lastSeekCount by remember { mutableIntStateOf(audioPlayer.seekCount) }
     var lastSeekAtMs by remember { mutableLongStateOf(0L) }
 
+    // A freshly (re)started track's real duration hasn't arrived from mpv yet at this instant -
+    // reset immediately rather than waiting for the polling loop below to notice, which otherwise
+    // keeps showing (and, via ProgressSlider's seekFraction() call, seeking against) the *previous*
+    // track's duration until that update lands.
+    LaunchedEffect(audioPlayer.playbackStartedCount) {
+        if (audioPlayer.playbackStartedCount > 0) {
+            positionMs = audioPlayer.lastConfirmedStartPositionMs
+            durationMs = 1L // avoid /0
+        }
+    }
+
     LaunchedEffect(audioPlayer) {
         while (true) {
             if (audioPlayer.seekCount != lastSeekCount) {
