@@ -1,9 +1,8 @@
 package xyz.skifty.mani.media.mpv
 
 /**
- * Picks the [MpvIpcTransport] implementation for the current OS, mirroring
- * `SecureStorageFactory`'s `os.name`-based dispatch
- * (`xyz.skifty.mani.security.WindowsSecureStorage`).
+ * Picks the [MpvIpcTransport] implementation for the current OS, mirroring the same `os.name`-based
+ * dispatch DesktopModule.kt uses to choose a `SecureStorage` implementation.
  */
 object MpvIpcTransportFactory {
 

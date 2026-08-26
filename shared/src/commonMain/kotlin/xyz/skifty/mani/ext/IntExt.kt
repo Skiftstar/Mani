@@ -10,3 +10,10 @@ fun Int.toDurationLabel(): String {
             .padStart(2, '0')
     }"
 }
+
+/** Hours and minutes (rounded down to the minute) from a duration in seconds (this receiver) -
+ *  for a playlist's total runtime, unlike [toDurationLabel]'s per-song `m:ss`. */
+fun Int.toHoursAndMinutes(): Pair<Int, Int> {
+    val totalMinutes = this.coerceAtLeast(0) / 60
+    return (totalMinutes / 60) to (totalMinutes % 60)
+}

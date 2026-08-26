@@ -19,6 +19,15 @@
     <string name="cd_albums">Albums</string>
     <string name="cd_playlist_cover">Playlist cover</string>
 
+    <!-- Bottom nav (Android) -->
+    <string name="nav_home">Home</string>
+    <string name="nav_search">Search</string>
+    <string name="nav_playlists">Playlists</string>
+    <string name="nav_profile">Profile</string>
+
+    <!-- Now Playing screen (Android) -->
+    <string name="cd_collapse_now_playing">Collapse</string>
+
     <!-- Playlist screen -->
     <string name="playlist_liked_songs_title">Liked Songs</string>
     <plurals name="playlist_song_count">
@@ -29,6 +38,8 @@
     <string name="playlist_column_quality">Quality</string>
     <string name="cd_duration">Duration</string>
     <string name="playlist_badge">Playlist</string>
+    <string name="playlist_runtime_hours_minutes">%1$dh %2$dmin</string>
+    <string name="playlist_runtime_minutes_only">%1$dmin</string>
 
     <!-- Now playing widget -->
     <string name="cd_album_art">Album art</string>

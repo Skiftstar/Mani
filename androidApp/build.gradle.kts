@@ -35,5 +35,8 @@ dependencies {
     implementation(projects.shared)
     implementation(compose.preview)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.koin.android)
+    implementation(libs.androidx.media3.session)
     debugImplementation(compose.uiTooling)
 }

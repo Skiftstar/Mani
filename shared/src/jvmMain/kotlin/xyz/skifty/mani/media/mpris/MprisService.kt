@@ -4,7 +4,7 @@ import org.freedesktop.dbus.DBusPath
 import org.freedesktop.dbus.connections.impl.DBusConnectionBuilder
 import org.freedesktop.dbus.interfaces.Properties
 import org.freedesktop.dbus.types.Variant
-import xyz.skifty.mani.media.DesktopAudioPlayer
+import xyz.skifty.mani.media.AudioPlayer
 import xyz.skifty.mani.media.LoopMode
 import xyz.skifty.mani.media.PlaybackQueue
 import xyz.skifty.mani.media.SongInfo
@@ -24,7 +24,7 @@ private const val NO_TRACK_PATH = "/org/mpris/MediaPlayer2/TrackList/NoTrack"
  * codebase already tolerates a missing OS keyring.
  */
 class MprisService(
-    private val audioPlayer: DesktopAudioPlayer,
+    private val audioPlayer: AudioPlayer,
     private val activeSongInfo: SongInfo,
     private val playbackQueue: PlaybackQueue,
 ) : MprisRoot, MprisPlayerInterface {

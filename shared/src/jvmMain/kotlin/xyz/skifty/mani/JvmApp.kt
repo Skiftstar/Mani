@@ -27,26 +27,16 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
-import coil3.ImageLoader
-import coil3.SingletonImageLoader
-import coil3.network.ktor3.KtorNetworkFetcherFactory
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.ui.tooling.preview.Preview
-import xyz.skifty.mani.api.ApiService
 import xyz.skifty.mani.ext.toLocale
 import xyz.skifty.mani.i18n.AppLanguage
-import xyz.skifty.mani.media.SongInfo
-import xyz.skifty.mani.preferences.AppPreferencesFactory
-import xyz.skifty.mani.security.SecureStorageFactory
 import java.util.Locale
 
 import androidx.compose.foundation.layout.Row
 import mani.shared.generated.resources.Res
 import mani.shared.generated.resources.playlist_liked_songs_title
 import org.jetbrains.compose.resources.stringResource
-import xyz.skifty.mani.media.DesktopAudioPlayer
-import xyz.skifty.mani.media.PlaybackQueue
-import xyz.skifty.mani.media.PlaylistLibrary
 import xyz.skifty.mani.media.mpris.MprisService
 import xyz.skifty.mani.ui.components.AutoHidingScrollbar
 import xyz.skifty.mani.ui.components.SearchBar
@@ -62,30 +52,24 @@ import xyz.skifty.mani.ui.screens.playlist.PlaylistScreen
 import xyz.skifty.mani.ui.screens.search.SearchScreen
 import xyz.skifty.mani.ui.theme.ManiTheme
 
-// A song counts as "listened to" for scrobbling once at least half of it, or this many ms of it
-// (whichever is reached first), has actually been heard - see scrobbleIfNeeded below. Matches
-// the same rule most scrobblers (e.g. last.fm) use.
-private const val SCROBBLE_MIN_LISTEN_MS = 4 * 60 * 1000L
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 @Preview
 fun JvmApp() {
 
-    val audioPlayer = remember { DesktopAudioPlayer() }
-    val activeSongInfo = remember { SongInfo() }
-    val playbackQueue = remember {
-        PlaybackQueue(
-            audioPlayer = audioPlayer,
-            activeSongInfo = activeSongInfo,
-        )
-    }
-    val playlistLibrary = remember { PlaylistLibrary() }
-    val apiService = remember { ApiService() }
-    val secureStorage = remember { SecureStorageFactory.create() }
-    val appPreferences = remember { AppPreferencesFactory.create() }
-    // Only succeeds on Linux with a reachable session bus - null elsewhere, tolerated like a
-    // missing OS keyring is below.
+    // The platform-agnostic parts (session restore, last-song/volume persistence, scrobbling) live
+    // in AppShellState now, shared with AndroidApp() - see its own doc comment.
+    val appShellState = rememberAppShellState()
+    val audioPlayer = appShellState.audioPlayer
+    val activeSongInfo = appShellState.activeSongInfo
+    val playbackQueue = appShellState.playbackQueue
+    val playlistLibrary = appShellState.playlistLibrary
+    val apiService = appShellState.apiService
+
+    // Not Koin-resolved, unlike the above - Koin's single {} throws if its factory lambda returns
+    // null (confirmed by hand: IllegalStateException "Single instance created couldn't return
+    // value" at composition time), which constructing this needs to be able to do: only succeeds
+    // on Linux with a reachable session bus, null elsewhere, tolerated like a missing OS keyring.
     val mprisService = remember {
         runCatching {
             MprisService(
@@ -95,8 +79,6 @@ fun JvmApp() {
             )
         }
             .onFailure { e ->
-                // Previously swallowed with zero diagnostic output - impossible to tell "no
-                // session bus reachable" (expected/tolerated) apart from a real bug without this.
                 System.err.println("MPRIS unavailable, continuing without it: $e")
                 e.printStackTrace()
             }
@@ -113,17 +95,6 @@ fun JvmApp() {
         }
     }
 
-    remember {
-        SingletonImageLoader.setSafe { context ->
-            ImageLoader.Builder(context)
-                .components { add(KtorNetworkFetcherFactory()) }
-                .build()
-        }
-    }
-
-    // null = still checking for a saved session
-    var screen by remember { mutableStateOf<Screen?>(null) }
-
     // Search bar text, hoisted here (not modeled as data on Screen.Search) since it's transient
     // input, not navigation state - see SearchBar/SearchScreen.
     var searchQuery by remember { mutableStateOf("") }
@@ -133,12 +104,13 @@ fun JvmApp() {
     var screenBeforeSearch by remember { mutableStateOf<Screen?>(null) }
 
     // All non-search navigation (sidebar clicks, login success) goes through this rather than
-    // assigning `screen` directly, so it can also drop any in-progress search - without this, a
-    // sidebar click while mid-search would leave `screen` and `searchQuery` out of sync (content
-    // switches away from Search, but the search bar still shows the old query and would restore
-    // the *pre-search* screen, not the one just navigated to, the next time it's cleared).
+    // assigning appShellState.screen directly, so it can also drop any in-progress search -
+    // without this, a sidebar click while mid-search would leave the screen and searchQuery out of
+    // sync (content switches away from Search, but the search bar still shows the old query and
+    // would restore the *pre-search* screen, not the one just navigated to, the next time it's
+    // cleared).
     fun navigate(target: Screen) {
-        screen = target
+        appShellState.navigate(target)
         searchQuery = ""
         screenBeforeSearch = null
     }
@@ -151,12 +123,12 @@ fun JvmApp() {
         val wasEmpty = searchQuery.isEmpty()
         val isEmpty = newQuery.isEmpty()
         if (wasEmpty && !isEmpty) {
-            if (screen != Screen.Search) {
-                screenBeforeSearch = screen
+            if (appShellState.screen != Screen.Search) {
+                screenBeforeSearch = appShellState.screen
             }
-            screen = Screen.Search
+            appShellState.screen = Screen.Search
         } else if (!wasEmpty && isEmpty) {
-            screen = screenBeforeSearch ?: Screen.Home
+            appShellState.screen = screenBeforeSearch ?: Screen.Home
             screenBeforeSearch = null
         }
         searchQuery = newQuery
@@ -168,55 +140,6 @@ fun JvmApp() {
     // key(appLanguage) below so already-composed stringResource() calls re-run.
     val systemDefaultLocale = remember { Locale.getDefault() }
     var appLanguage by remember { mutableStateOf(AppLanguage.SYSTEM) }
-
-    LaunchedEffect(Unit) {
-        screen = try {
-            val url = secureStorage.get("mani_api_url")
-            val user = secureStorage.get("mani_username")
-            val token = secureStorage.get("mani_token")
-            val salt = secureStorage.get("mani_salt")
-
-            if (url != null && user != null && token != null && salt != null) {
-                apiService.restoreSession(url, user, token, salt)
-                if (apiService.ping().isSuccess) Screen.Home else Screen.Login
-            } else {
-                Screen.Login
-            }
-        } catch (e: Exception) {
-            // Secure storage being unavailable (e.g. no system keyring reachable on
-            // Linux) shouldn't crash startup - just fall back to a fresh login.
-            System.err.println("Could not restore saved session: ${e.message}")
-            Screen.Login
-        }
-
-        if (screen == Screen.Home) {
-            // Restore the last-played song as paused, not auto-played - a stale id or an
-            // unreachable server here shouldn't block startup either.
-            runCatching {
-                appPreferences.get("mani_last_song_id")?.let { lastSongId ->
-                    audioPlayer.prepare(apiService.getSong(lastSongId), activeSongInfo)
-                }
-            }
-        }
-    }
-
-    LaunchedEffect(activeSongInfo.songId) {
-        activeSongInfo.songId?.let { songId ->
-            runCatching { appPreferences.save("mani_last_song_id", songId) }
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        runCatching {
-            appPreferences.get("mani_volume")
-                ?.toIntOrNull()
-                ?.let { savedVolume -> audioPlayer.setVolume(savedVolume) }
-        }
-    }
-
-    LaunchedEffect(audioPlayer.volume) {
-        runCatching { appPreferences.save("mani_volume", audioPlayer.volume.toString()) }
-    }
 
     LaunchedEffect(
         audioPlayer.isPlaying,
@@ -231,40 +154,6 @@ fun JvmApp() {
         playbackQueue.loopMode,
     ) {
         mprisService?.notifyStateChanged()
-    }
-
-    // Guards against scrobbling the same song twice: a natural finish (trackFinishedCount, below)
-    // and the queue's subsequent auto-advance (which also raises trackLeftCount, since it goes
-    // through audioPlayer.play() like any other track change) would otherwise both try to
-    // scrobble the same just-completed song.
-    var lastScrobbledSongId by remember { mutableStateOf<String?>(null) }
-
-    // Subsonic doesn't enforce a minimum-listen rule itself - scrobbling is meant to represent an
-    // actual listen, so only report one once [listenedMs] (real elapsed playing time, not
-    // position - see DesktopAudioPlayer.listenedMs()) crosses SCROBBLE_MIN_LISTEN_MS.
-    suspend fun scrobbleIfNeeded(songId: String?, listenedMs: Long, durationMs: Long) {
-        if (songId == null || songId == lastScrobbledSongId || durationMs <= 0) {
-            return
-        }
-        val thresholdMs = minOf(durationMs / 2, SCROBBLE_MIN_LISTEN_MS)
-        if (listenedMs >= thresholdMs) {
-            lastScrobbledSongId = songId
-            apiService.scrobble(songId)
-        }
-    }
-
-    // A track finishing naturally is the queue's cue to advance (or replay, on loop-one).
-    LaunchedEffect(audioPlayer.trackFinishedCount) {
-        if (audioPlayer.trackFinishedCount > 0) {
-            scrobbleIfNeeded(activeSongInfo.songId, audioPlayer.listenedMs(), audioPlayer.length())
-            playbackQueue.onTrackFinished()
-        }
-    }
-
-    // Scrobbles whatever song was just left behind - a skip, a previous, starting a different
-    // playlist's queue, or an explicit stop - see DesktopAudioPlayer.captureTrackLeft().
-    LaunchedEffect(audioPlayer.trackLeftCount) {
-        audioPlayer.lastTrackLeft?.let { left -> scrobbleIfNeeded(left.songId, left.listenedMs, left.durationMs) }
     }
 
     // Playback (re)starting is a new "start counting from here" reference point for widgets that
@@ -373,7 +262,7 @@ fun JvmApp() {
                     // Only shown on the login screen - the chosen language still applies
                     // everywhere else too (it's a Column-scoped state above, not tied to this
                     // row's visibility).
-                    if (screen == Screen.Login) {
+                    if (appShellState.screen == Screen.Login) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.End,
@@ -393,7 +282,7 @@ fun JvmApp() {
                         modifier = Modifier.weight(1f)
                             .fillMaxWidth(),
                     ) {
-                        if (screen == Screen.Home || screen == Screen.LikedSongs || screen == Screen.Search || screen is Screen.Playlist) {
+                        if (appShellState.screen == Screen.Home || appShellState.screen == Screen.LikedSongs || appShellState.screen == Screen.Search || appShellState.screen is Screen.Playlist) {
                             Sidebar(
                                 apiService = apiService,
                                 playlistLibrary = playlistLibrary,
@@ -415,7 +304,7 @@ fun JvmApp() {
                             // below, so it stays visible at the top of the content area - next to
                             // the sidebar, not above it - regardless of how far the screen content
                             // itself is scrolled.
-                            if (screen != null && screen != Screen.Login) {
+                            if (appShellState.screen != null && appShellState.screen != Screen.Login) {
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -440,7 +329,7 @@ fun JvmApp() {
                                         .verticalScroll(scrollState),
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                 ) {
-                                    when (val currentScreen = screen) {
+                                    when (val currentScreen = appShellState.screen) {
                                         null -> Box(
                                             modifier = Modifier.fillMaxSize(),
                                             contentAlignment = Alignment.Center,
@@ -483,6 +372,10 @@ fun JvmApp() {
                                             query = searchQuery,
                                             scrollState = scrollState,
                                         )
+
+                                        // Android-only destinations - desktop's Sidebar never
+                                        // navigates to any of these, see Screen.kt.
+                                        Screen.Library, Screen.Profile, Screen.NowPlaying -> Unit
                                     }
                                 }
 

@@ -8,27 +8,27 @@ import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import xyz.skifty.mani.media.mpv.MpvIpcClient
 
-class DesktopAudioPlayer {
+class DesktopAudioPlayer : AudioPlayer {
 
     private val mpv = MpvIpcClient()
 
-    var isPlaying: Boolean by mutableStateOf(false)
+    override var isPlaying: Boolean by mutableStateOf(false)
         private set
 
     // Backing state for `volume` below - named differently so its Kotlin-generated setter
     // doesn't clash with the setVolume(Int) function's identical JVM signature.
     private var volumeState: Int by mutableStateOf(100)
-    val volume: Int get() = volumeState
+    override val volume: Int get() = volumeState
 
     // Bumped on every explicit seek, regardless of who asked for it (the in-app progress slider
     // or an MPRIS client) - a single reactive hook JvmApp can watch to tell MPRIS listeners the
     // position just jumped, distinct from ordinary forward playback (see MprisService.notifySeeked()).
-    var seekCount: Int by mutableStateOf(0)
+    override var seekCount: Int by mutableStateOf(0)
         private set
 
     // Bumped whenever a track finishes playing naturally - JvmApp watches this to advance the
     // playback queue, same "Compose-observable counter as an event hook" shape as seekCount.
-    var trackFinishedCount: Int by mutableStateOf(0)
+    override var trackFinishedCount: Int by mutableStateOf(0)
         private set
 
     // Bumped whenever mpv *confirms* playback has genuinely (re)started - a fresh play, a resume,
@@ -37,12 +37,12 @@ class DesktopAudioPlayer {
     // value (true -> true), so it wouldn't retrigger a LaunchedEffect keyed on it - this counter
     // always ticks, and only once the position it'd report is actually trustworthy (unlike the
     // optimistic isPlaying write in play(), which fires before mpv has confirmed anything).
-    var playbackStartedCount: Int by mutableStateOf(0)
+    override var playbackStartedCount: Int by mutableStateOf(0)
         private set
 
     // The position to report as of the most recent playbackStartedCount bump (ms) - see
     // lastConfirmedStartPositionMs and pendingStartPositionMs below.
-    var lastConfirmedStartPositionMs: Long by mutableStateOf(0L)
+    override var lastConfirmedStartPositionMs: Long by mutableStateOf(0L)
         private set
 
     // Cached from mpv's "time-pos"/"duration" property-change events, pushed asynchronously on
@@ -80,10 +80,10 @@ class DesktopAudioPlayer {
 
     // Describes whatever song play()/prepare()/stop() just replaced or cleared, captured right
     // before that happens - see TrackLeftEvent and JvmApp's scrobbleIfNeeded.
-    var lastTrackLeft: TrackLeftEvent? by mutableStateOf(null)
+    override var lastTrackLeft: TrackLeftEvent? by mutableStateOf(null)
         private set
 
-    var trackLeftCount: Int by mutableStateOf(0)
+    override var trackLeftCount: Int by mutableStateOf(0)
         private set
 
     init {
@@ -152,7 +152,7 @@ class DesktopAudioPlayer {
      *  playback currently sits and *does* jump on a seek). This, not position, is the input to
      *  JvmApp's scrobble-threshold decision - seeking straight to the threshold and immediately
      *  skipping away shouldn't count as a real listen. */
-    fun listenedMs(): Long = currentAccumulatedListenMs()
+    override fun listenedMs(): Long = currentAccumulatedListenMs()
 
     private fun captureTrackLeft(activeSongInfo: SongInfo) {
         activeSongInfo.songId?.let { songId ->
@@ -161,9 +161,9 @@ class DesktopAudioPlayer {
         }
     }
 
-    fun length(): Long = cachedDurationMs
+    override fun length(): Long = cachedDurationMs
 
-    fun play(songInfo: SongInfo, activeSongInfo: SongInfo) {
+    override fun play(songInfo: SongInfo, activeSongInfo: SongInfo) {
         captureTrackLeft(activeSongInfo)
         resetListenTracking()
         pendingStartPositionMs = 0L
@@ -184,7 +184,7 @@ class DesktopAudioPlayer {
 
     /** Loads [songInfo] without starting playback - used to restore the last-played song as
      *  paused on app startup, without auto-playing it. */
-    fun prepare(songInfo: SongInfo, activeSongInfo: SongInfo) {
+    override fun prepare(songInfo: SongInfo, activeSongInfo: SongInfo) {
         captureTrackLeft(activeSongInfo)
         resetListenTracking()
         pendingStartPositionMs = 0L
@@ -201,7 +201,7 @@ class DesktopAudioPlayer {
         setIsPlaying(false)
     }
 
-    fun stop(activeSongInfo: SongInfo) {
+    override fun stop(activeSongInfo: SongInfo) {
         captureTrackLeft(activeSongInfo)
         mpv.sendCommand("stop")
         activeSongInfo.clear()
@@ -210,7 +210,7 @@ class DesktopAudioPlayer {
 
     /** Resumes/starts playback - a no-op if already playing. Unlike [togglePlayPause], this
      *  won't flip a playing track to paused, matching MPRIS's idempotent `Play()`. */
-    fun resume() {
+    override fun resume() {
         if (!isPlaying) {
             mpv.sendCommand("set_property", "pause", false)
             setIsPlaying(true)
@@ -218,23 +218,23 @@ class DesktopAudioPlayer {
     }
 
     /** Pauses playback - a no-op if already paused. Matches MPRIS's idempotent `Pause()`. */
-    fun pauseOnly() {
+    override fun pauseOnly() {
         if (isPlaying) {
             mpv.sendCommand("set_property", "pause", true)
             setIsPlaying(false)
         }
     }
 
-    fun togglePlayPause() {
+    override fun togglePlayPause() {
         if (isPlaying) pauseOnly() else resume()
     }
 
-    fun seek(ms: Long) {
+    override fun seek(ms: Long) {
         mpv.sendCommand("seek", ms / 1000.0, "absolute")
         seekCount++
     }
 
-    fun seekFraction(fraction: Float) {
+    override fun seekFraction(fraction: Float) {
         val targetMs = (fraction.coerceIn(0f, 1f) * cachedDurationMs).toLong()
         mpv.sendCommand("seek", targetMs / 1000.0, "absolute")
         seekCount++
@@ -242,15 +242,15 @@ class DesktopAudioPlayer {
 
     /** Get current playback time in milliseconds, from the cached value kept up to date by mpv's
      *  "time-pos" property-change events. */
-    fun currentPosition(): Long = cachedPositionMs
+    override fun currentPosition(): Long = cachedPositionMs
 
-    fun setVolume(volume: Int) {
+    override fun setVolume(volume: Int) {
         val clamped = volume.coerceIn(0, 100)
         mpv.sendCommand("set_property", "volume", clamped)
         volumeState = clamped
     }
 
-    fun release() {
+    override fun release() {
         mpv.close()
     }
 }

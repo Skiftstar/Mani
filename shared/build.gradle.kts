@@ -43,6 +43,8 @@ kotlin {
             implementation(compose.materialIconsExtended)
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor3)
+            implementation(libs.koin.core)
+            implementation(libs.koin.compose)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -54,6 +56,13 @@ kotlin {
             implementation(libs.dbus.java.core)
             implementation(libs.dbus.java.transport.native.unixsocket)
             implementation(libs.kotlinx.coroutinesSwing)
+        }
+        androidMain.dependencies {
+            implementation(libs.koin.android)
+            implementation(libs.androidx.activity.compose)
+            implementation(libs.androidx.media3.exoplayer)
+            implementation(libs.androidx.media3.session)
+            implementation(libs.androidx.media3.common)
         }
     }
 }

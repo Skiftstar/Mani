@@ -3,20 +3,6 @@ package xyz.skifty.mani.security
 import xyz.skifty.mani.security.SecureStorage
 import java.io.File
 
-actual object SecureStorageFactory {
-    actual fun create(): SecureStorage {
-        val os = System.getProperty("os.name")
-            .lowercase()
-        return when {
-            os.contains("win") -> WindowsSecureStorage()
-            os.contains("nux") || os.contains("nix") -> LinuxSecureStorage()
-            else -> throw UnsupportedOperationException(
-                "Mani does not have a secure storage backend for this OS yet (os.name=$os).",
-            )
-        }
-    }
-}
-
 class WindowsSecureStorage : SecureStorage {
     override fun save(key: String, secret: String) {
         val encrypted = DPAPI.protect(secret.toByteArray(Charsets.UTF_8))
