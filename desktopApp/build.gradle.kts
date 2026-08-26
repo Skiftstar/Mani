@@ -20,6 +20,11 @@ kotlin {
     }
 }
 
+// Pulled out to top-level vals so packageReleaseAppImageBundle below can reuse the same values
+// rather than re-hardcoding them.
+val desktopPackageName = "xyz.skifty.mani"
+val desktopPackageVersion = "1.0.0"
+
 compose.desktop {
     application {
         mainClass = "xyz.skifty.mani.MainKt"
@@ -42,8 +47,8 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.AppImage)
-            packageName = "xyz.skifty.mani"
-            packageVersion = "1.0.0"
+            packageName = desktopPackageName
+            packageVersion = desktopPackageVersion
 
             // The packaged app ships a custom jlink-trimmed JDK runtime (createRuntimeImage),
             // built from whatever modules static analysis detects the app needs - confirmed by
@@ -246,3 +251,155 @@ val downloadMpvForWindows = tasks.register("downloadMpvForWindows") {
 // and takes effect only where a task actually named this exists.
 tasks.matching { task -> task.name == "packageMsi" || task.name == "packageReleaseMsi" }
     .configureEach { dependsOn(downloadMpvForWindows) }
+
+// Deliberately not using appimagetool (the "official" packaging CLI) here - it's distributed as an
+// AppImage itself, and both its FUSE-mount path and its APPIMAGE_EXTRACT_AND_RUN fallback were
+// confirmed by hand to crash outright ("fuse: memory allocation failed" / "Can't open squashfs
+// image: Bad address") against the bundled squashfuse's handling of newer kernels - a known upstream
+// squashfuse/libfuse incompatibility, unrelated to this project. Building the .AppImage by hand
+// instead - mksquashfs the AppDir, concatenate a plain (non-AppImage-wrapped) runtime binary in
+// front of it - sidesteps needing to execute any AppImage, and thus that bug, entirely at build
+// time. type2-runtime publishes exactly that raw runtime binary; unlike appimagetool's own
+// "continuous"-only releases, it also tags dated releases, so this pins to one of those for
+// reproducible builds the same way downloadMpvForWindows above pins mpv-winbuild-cmake - bump
+// appImageRuntimeTag by hand when a newer runtime build is wanted.
+val downloadAppImageRuntime = tasks.register("downloadAppImageRuntime") {
+    val runtimeFile = layout.buildDirectory.file("appimageRuntime/runtime-x86_64")
+
+    doLast {
+        val appImageRuntimeTag = "20251108"
+
+        val file = runtimeFile.get().asFile
+        if (file.exists()) {
+            return@doLast // already fetched
+        }
+
+        file.parentFile.mkdirs()
+        URI("https://github.com/AppImage/type2-runtime/releases/download/$appImageRuntimeTag/runtime-x86_64")
+            .toURL()
+            .openStream()
+            .use { input ->
+                file.outputStream().use { output -> input.copyTo(output) }
+            }
+        file.setExecutable(true)
+    }
+}
+
+// Compose's own `AppImage` target format (used by packageReleaseAppImage above) is just an alias
+// for jpackage's native `app-image` type on Linux - a portable bin/+lib/ folder, not an actual
+// single-file .AppImage (confirmed by hand: no AppRun, no root .desktop file, no squashfs bundle
+// anywhere in its output). This task wraps that folder into a real .AppImage by hand, the same way
+// addMpvDependencyToDeb above patches jpackage's .deb output rather than getting Compose's plugin
+// to do it directly.
+//
+// Requires `mksquashfs` on PATH (Arch: `sudo pacman -S squashfs-tools`; Debian/Ubuntu: `sudo apt
+// install squashfs-tools`) - a build-time dependency in the same vein as dpkg-deb/7z assumed
+// present elsewhere in this file, just less universally preinstalled.
+//
+// Like the .deb, this doesn't bundle mpv - Linux relies on a system mpv package either way (see
+// addMpvDependencyToDeb's comment above), so running the resulting AppImage still requires mpv
+// installed separately.
+tasks.register("packageReleaseAppImageBundle") {
+    dependsOn("packageReleaseAppImage", downloadAppImageRuntime)
+
+    // Captured here as lazy Providers/values for the same configuration-cache reason as
+    // addMpvDependencyToDeb's debOutputDir/patchDir above - this also applies to plain top-level
+    // vals like desktopPackageName/desktopPackageVersion, not just functions, since referencing
+    // them directly from doLast would likewise capture a live reference to this script instance.
+    val appImageDir = layout.buildDirectory.dir("compose/binaries/main-release/app/$desktopPackageName")
+    val appDirStaging = layout.buildDirectory.dir("appImageAppDir")
+    val outputDir = layout.buildDirectory.dir("compose/binaries/main-release/appimage")
+    val runtimeFile = layout.buildDirectory.file("appimageRuntime/runtime-x86_64")
+    val packageName = desktopPackageName
+    val packageVersion = desktopPackageVersion
+
+    doLast {
+        // Local to this action, not a script-top-level function - see addMpvDependencyToDeb's
+        // runCommand above for why that distinction matters for the configuration cache.
+        fun runCommand(vararg command: String) {
+            val process = ProcessBuilder(*command)
+                .redirectErrorStream(true)
+                .start()
+            val output = process.inputStream.bufferedReader().readText()
+            val exitCode = process.waitFor()
+            if (exitCode != 0) {
+                throw GradleException("${command.joinToString(" ")} failed (exit $exitCode):\n$output")
+            }
+        }
+
+        val appDir = appDirStaging.get().asFile
+        appDir.deleteRecursively()
+        appDir.mkdirs()
+
+        appImageDir.get().asFile.copyRecursively(
+            target = appDir,
+            overwrite = true,
+        )
+
+        // AppRun is AppImage's fixed entry point name - it's what the resulting .AppImage actually
+        // executes, relative to wherever it happens to extract/mount itself, hence resolving `bin/`
+        // relative to AppRun's own location rather than a fixed absolute path.
+        val appRunFile = appDir.resolve("AppRun")
+        appRunFile.writeText(
+            """
+            #!/bin/sh
+            HERE="${'$'}(dirname "${'$'}(readlink -f "${'$'}0")")"
+            exec "${'$'}HERE/bin/$packageName" "${'$'}@"
+            """.trimIndent(),
+        )
+        appRunFile.setExecutable(true)
+
+        // Wording matches packaging/arch/mani.desktop's .desktop entry for consistency across
+        // package formats - jpackage's own auto-generated .desktop (baked into the .deb) settles
+        // for the bare package name and Categories=Unknown instead.
+        appDir.resolve("$packageName.desktop")
+            .writeText(
+                """
+                [Desktop Entry]
+                Type=Application
+                Name=Mani
+                Comment=A Subsonic/Navidrome desktop music client
+                Exec=$packageName
+                Icon=$packageName
+                Terminal=false
+                Categories=AudioVideo;Audio;Player;
+                """.trimIndent(),
+            )
+
+        // AppImage expects its icon at the AppDir root, unlike jpackage's own app-image layout
+        // which only carries it inside lib/ - reusing that already-generated file rather than
+        // needing a separate source icon of our own.
+        appDir.resolve("lib/$packageName.png")
+            .copyTo(
+                target = appDir.resolve("$packageName.png"),
+                overwrite = true,
+            )
+
+        val outputDirFile = outputDir.get().asFile
+        outputDirFile.mkdirs()
+        val outputFile = outputDirFile.resolve("$packageName-$packageVersion-x86_64.AppImage")
+        outputFile.delete()
+
+        val squashfsFile = appDirStaging.get().asFile.parentFile.resolve("appImage.squashfs")
+        squashfsFile.delete()
+        runCommand(
+            "mksquashfs",
+            appDir.absolutePath,
+            squashfsFile.absolutePath,
+            "-root-owned",
+            "-noappend",
+        )
+
+        // A .AppImage is just a runtime binary with a squashfs filesystem appended directly after
+        // it - the runtime locates that appended data by reading its own ELF layout at startup, so
+        // plain concatenation (no header patching) is all that's needed here.
+        outputFile.outputStream().use { output ->
+            runtimeFile.get().asFile.inputStream().use { input -> input.copyTo(output) }
+            squashfsFile.inputStream().use { input -> input.copyTo(output) }
+        }
+        outputFile.setExecutable(true)
+        squashfsFile.delete()
+
+        println("The AppImage is written to ${outputFile.absolutePath}")
+    }
+}
