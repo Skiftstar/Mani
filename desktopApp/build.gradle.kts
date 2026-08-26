@@ -24,6 +24,22 @@ compose.desktop {
     application {
         mainClass = "xyz.skifty.moonlight.MainKt"
 
+        // ProGuard shrinking broke real Windows/Linux installs at runtime - confirmed by hand:
+        // ktor-client-cio's engine is only ever loaded reflectively (via ServiceLoader, reading a
+        // META-INF/services entry naming the class - nothing in this codebase references
+        // CIOEngineContainer directly), so ProGuard's static analysis doesn't see it's needed and
+        // strips it, leaving the service file pointing at a class that's gone
+        // (ServiceConfigurationError at startup). This is a known, still-unresolved upstream gap -
+        // Ktor doesn't ship JVM-target ProGuard rules yet (KTOR-6703/KTOR-7056). A narrow -keep
+        // rule for just the CIO engine wouldn't be enough either: the same build log already shows
+        // the identical "accesses ... dynamically" reflection pattern for jna/dbus-java/slf4j too
+        // (MPRIS, Windows DPAPI) - undetected until whichever of those code paths actually runs.
+        // Disabling shrinking entirely trades some install size for not chasing this class of bug
+        // one library at a time.
+        buildTypes.release.proguard {
+            isEnabled.set(false)
+        }
+
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.AppImage)
             packageName = "xyz.skifty.moonlight"
