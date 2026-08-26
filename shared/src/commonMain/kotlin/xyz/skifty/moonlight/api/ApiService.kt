@@ -266,4 +266,20 @@ class ApiService {
         }
     }
 
+    /** Records a completed listen of [songId] - updates play counts and reports to last.fm if
+     *  configured server-side. `submission` is left at its Subsonic-default of true (an actual
+     *  listen), as opposed to false, which would instead post a transient "now playing" notice. */
+    suspend fun scrobble(songId: String): Result<Unit> {
+        return try {
+            val result = httpClient.get(buildUrl("/rest/scrobble", mapOf("id" to songId)))
+            if (result.status.isSuccess()) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Server returned HTTP ${result.status.value}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception("Could not reach server: ${e.message}", e))
+        }
+    }
+
 }

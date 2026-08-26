@@ -1,5 +1,6 @@
 package xyz.skifty.moonlight
 
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusTarget
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
@@ -41,6 +51,8 @@ import xyz.skifty.moonlight.ui.components.AutoHidingScrollbar
 import xyz.skifty.moonlight.ui.components.SearchBar
 import xyz.skifty.moonlight.ui.components.Sidebar
 import xyz.skifty.moonlight.ui.components.nowplaying.NowPlayingBottomWidget
+import xyz.skifty.moonlight.ui.components.util.LocalTextFieldFocusTracker
+import xyz.skifty.moonlight.ui.components.util.TextFieldFocusTracker
 import xyz.skifty.moonlight.ui.screens.Screen
 import xyz.skifty.moonlight.ui.screens.home.HomeScreen
 import xyz.skifty.moonlight.ui.screens.login.LoginScreen
@@ -48,6 +60,11 @@ import xyz.skifty.moonlight.ui.screens.login.components.LanguageDropdown
 import xyz.skifty.moonlight.ui.screens.playlist.PlaylistScreen
 import xyz.skifty.moonlight.ui.screens.search.SearchScreen
 import xyz.skifty.moonlight.ui.theme.MoonlightTheme
+
+// A song counts as "listened to" for scrobbling once at least half of it, or this many ms of it
+// (whichever is reached first), has actually been heard - see scrobbleIfNeeded below. Matches
+// the same rule most scrobblers (e.g. last.fm) use.
+private const val SCROBBLE_MIN_LISTEN_MS = 4 * 60 * 1000L
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -208,11 +225,38 @@ fun JvmApp() {
         mprisService?.notifyStateChanged()
     }
 
+    // Guards against scrobbling the same song twice: a natural finish (trackFinishedCount, below)
+    // and the queue's subsequent auto-advance (which also raises trackLeftCount, since it goes
+    // through audioPlayer.play() like any other track change) would otherwise both try to
+    // scrobble the same just-completed song.
+    var lastScrobbledSongId by remember { mutableStateOf<String?>(null) }
+
+    // Subsonic doesn't enforce a minimum-listen rule itself - scrobbling is meant to represent an
+    // actual listen, so only report one once [listenedMs] (real elapsed playing time, not
+    // position - see DesktopAudioPlayer.listenedMs()) crosses SCROBBLE_MIN_LISTEN_MS.
+    suspend fun scrobbleIfNeeded(songId: String?, listenedMs: Long, durationMs: Long) {
+        if (songId == null || songId == lastScrobbledSongId || durationMs <= 0) {
+            return
+        }
+        val thresholdMs = minOf(durationMs / 2, SCROBBLE_MIN_LISTEN_MS)
+        if (listenedMs >= thresholdMs) {
+            lastScrobbledSongId = songId
+            apiService.scrobble(songId)
+        }
+    }
+
     // A track finishing naturally is the queue's cue to advance (or replay, on loop-one).
     LaunchedEffect(audioPlayer.trackFinishedCount) {
         if (audioPlayer.trackFinishedCount > 0) {
+            scrobbleIfNeeded(activeSongInfo.songId, audioPlayer.listenedMs(), audioPlayer.length())
             playbackQueue.onTrackFinished()
         }
+    }
+
+    // Scrobbles whatever song was just left behind - a skip, a previous, starting a different
+    // playlist's queue, or an explicit stop - see DesktopAudioPlayer.captureTrackLeft().
+    LaunchedEffect(audioPlayer.trackLeftCount) {
+        audioPlayer.lastTrackLeft?.let { left -> scrobbleIfNeeded(left.songId, left.listenedMs, left.durationMs) }
     }
 
     // Playback (re)starting is a new "start counting from here" reference point for widgets that
@@ -253,140 +297,200 @@ fun JvmApp() {
         }
     }
 
+    // Space toggles play/pause from anywhere in the window, except while a text field has focus
+    // (search box, login fields, and any added later - see LocalTextFieldFocusTracker).
+    val textFieldFocusTracker = remember { TextFieldFocusTracker() }
+    var isSpaceKeyDown by remember { mutableStateOf(false) }
+    val rootFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        // So the root already sits somewhere in the focus chain even before the user clicks
+        // anything - onPreviewKeyEvent below only sees key events when focus is somewhere within
+        // its own subtree.
+        rootFocusRequester.requestFocus()
+    }
+
     key(appLanguage) {
         MoonlightTheme {
-            Column(
-                modifier = Modifier
-                    .safeContentPadding()
-                    .fillMaxSize(),
-            ) {
-                // Only shown on the login screen - the chosen language still applies everywhere
-                // else too (it's a Column-scoped state above, not tied to this row's visibility).
-                if (screen == Screen.Login) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
-                    ) {
-                        LanguageDropdown(
-                            selected = appLanguage,
-                            onSelect = { language ->
-                                Locale.setDefault(language.toLocale(systemDefaultLocale))
-                                appLanguage = language
-                            },
-                        )
-                    }
-                }
-
-                // Main content takes all available space
-                Row(
-                    modifier = Modifier.weight(1f)
-                        .fillMaxWidth(),
-                ) {
-                    if (screen == Screen.Home || screen == Screen.LikedSongs || screen == Screen.Search || screen is Screen.Playlist) {
-                        Sidebar(
-                            apiService = apiService,
-                            onHomeClick = { navigate(Screen.Home) },
-                            onLikedSongsClick = { navigate(Screen.LikedSongs) },
-                            onPlaylistClick = { playlist ->
-                                navigate(Screen.Playlist(playlist.id, playlist.name))
-                            },
-                        )
-                    }
-
-                    Column(
-                        modifier = Modifier.weight(1f)
-                            .fillMaxHeight(),
-                    ) {
-                        // Hidden while still restoring a saved session (screen == null, no
-                        // ApiService session yet) and on the login screen itself (searching
-                        // would fail either way). Fixed here, above the scrollable Column below,
-                        // so it stays visible at the top of the content area - next to the
-                        // sidebar, not above it - regardless of how far the screen content itself
-                        // is scrolled.
-                        if (screen != null && screen != Screen.Login) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                            ) {
-                                SearchBar(
-                                    query = searchQuery,
-                                    onQueryChange = ::onSearchQueryChange,
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
+            CompositionLocalProvider(LocalTextFieldFocusTracker provides textFieldFocusTracker) {
+                Column(
+                    modifier = Modifier
+                        .safeContentPadding()
+                        .fillMaxSize()
+                        // Clicking empty space elsewhere in the app (not a text field, not some
+                        // other focusable element - those consume the click themselves before it
+                        // reaches here) unfocuses whatever text field currently has focus, rather
+                        // than leaving it focused until something else is explicitly clicked.
+                        // Moves focus back to the root itself (not focusManager.clearFocus(),
+                        // which clears it entirely) - onPreviewKeyEvent below only sees key events
+                        // when focus is somewhere within this Column's own subtree, so Space would
+                        // stop working the moment nothing at all was focused.
+                        .pointerInput(Unit) {
+                            detectTapGestures { rootFocusRequester.requestFocus() }
+                        }
+                        .focusRequester(rootFocusRequester)
+                        .focusTarget()
+                        // onPreviewKeyEvent (top-down) rather than onKeyEvent (bottom-up): placed
+                        // on the app's own root, above every screen in the focus hierarchy, so it
+                        // sees Space regardless of what currently holds focus deeper in the tree -
+                        // and consuming it here first (returning true) stops it from also reaching
+                        // a focused button and triggering *that* button's own native
+                        // Space-activates-click behavior, matching how Space behaves in essentially
+                        // every media player: unconditional play/pause unless you're actively typing.
+                        .onPreviewKeyEvent { event ->
+                            if (event.key != Key.Spacebar || textFieldFocusTracker.isAnyFieldFocused) {
+                                return@onPreviewKeyEvent false
                             }
+                            when (event.type) {
+                                // Holding Space down fires repeated KeyDown events at the OS's
+                                // key-repeat rate - the isSpaceKeyDown latch means only the first
+                                // one (until the next KeyUp) actually toggles playback.
+                                KeyEventType.KeyDown -> {
+                                    if (!isSpaceKeyDown) {
+                                        isSpaceKeyDown = true
+                                        audioPlayer.togglePlayPause()
+                                    }
+                                    true
+                                }
+
+                                KeyEventType.KeyUp -> {
+                                    isSpaceKeyDown = false
+                                    true
+                                }
+
+                                else -> false
+                            }
+                        },
+                ) {
+                    // Only shown on the login screen - the chosen language still applies
+                    // everywhere else too (it's a Column-scoped state above, not tied to this
+                    // row's visibility).
+                    if (screen == Screen.Login) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                        ) {
+                            LanguageDropdown(
+                                selected = appLanguage,
+                                onSelect = { language ->
+                                    Locale.setDefault(language.toLocale(systemDefaultLocale))
+                                    appLanguage = language
+                                },
+                            )
+                        }
+                    }
+
+                    // Main content takes all available space
+                    Row(
+                        modifier = Modifier.weight(1f)
+                            .fillMaxWidth(),
+                    ) {
+                        if (screen == Screen.Home || screen == Screen.LikedSongs || screen == Screen.Search || screen is Screen.Playlist) {
+                            Sidebar(
+                                apiService = apiService,
+                                onHomeClick = { navigate(Screen.Home) },
+                                onLikedSongsClick = { navigate(Screen.LikedSongs) },
+                                onPlaylistClick = { playlist ->
+                                    navigate(Screen.Playlist(playlist.id, playlist.name))
+                                },
+                            )
                         }
 
-                        val scrollState = rememberScrollState()
-                        Box(
+                        Column(
                             modifier = Modifier.weight(1f)
-                                .fillMaxWidth(),
+                                .fillMaxHeight(),
                         ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .verticalScroll(scrollState),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                            ) {
-                                when (val currentScreen = screen) {
-                                    null -> Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        CircularProgressIndicator()
-                                    }
-
-                                    Screen.Home -> HomeScreen()
-                                    Screen.Login -> LoginScreen(
-                                        apiService,
-                                        onLoginSuccess = { navigate(Screen.Home) },
-                                    )
-
-                                    Screen.LikedSongs -> PlaylistScreen(
-                                        apiService = apiService,
-                                        audioPlayer = audioPlayer,
-                                        activeSongInfo = activeSongInfo,
-                                        playbackQueue = playbackQueue,
-                                        playlistId = null,
-                                        playlistName = stringResource(Res.string.playlist_liked_songs_title),
-                                    )
-
-                                    is Screen.Playlist -> PlaylistScreen(
-                                        apiService = apiService,
-                                        audioPlayer = audioPlayer,
-                                        activeSongInfo = activeSongInfo,
-                                        playbackQueue = playbackQueue,
-                                        playlistId = currentScreen.playlistId,
-                                        playlistName = currentScreen.playlistName,
-                                    )
-
-                                    Screen.Search -> SearchScreen(
-                                        apiService = apiService,
-                                        audioPlayer = audioPlayer,
-                                        activeSongInfo = activeSongInfo,
-                                        playbackQueue = playbackQueue,
+                            // Hidden while still restoring a saved session (screen == null, no
+                            // ApiService session yet) and on the login screen itself (searching
+                            // would fail either way). Fixed here, above the scrollable Column
+                            // below, so it stays visible at the top of the content area - next to
+                            // the sidebar, not above it - regardless of how far the screen content
+                            // itself is scrolled.
+                            if (screen != null && screen != Screen.Login) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                                ) {
+                                    SearchBar(
                                         query = searchQuery,
-                                        scrollState = scrollState,
+                                        onQueryChange = ::onSearchQueryChange,
+                                        modifier = Modifier.fillMaxWidth(),
                                     )
                                 }
                             }
 
-                            AutoHidingScrollbar(
-                                scrollState = scrollState,
-                                modifier = Modifier
-                                    .align(Alignment.CenterEnd)
-                                    .fillMaxHeight(),
-                            )
+                            val scrollState = rememberScrollState()
+                            Box(
+                                modifier = Modifier.weight(1f)
+                                    .fillMaxWidth(),
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .verticalScroll(scrollState),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                ) {
+                                    when (val currentScreen = screen) {
+                                        null -> Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            CircularProgressIndicator()
+                                        }
+
+                                        Screen.Home -> HomeScreen()
+                                        Screen.Login -> LoginScreen(
+                                            apiService,
+                                            onLoginSuccess = { navigate(Screen.Home) },
+                                        )
+
+                                        Screen.LikedSongs -> PlaylistScreen(
+                                            apiService = apiService,
+                                            audioPlayer = audioPlayer,
+                                            activeSongInfo = activeSongInfo,
+                                            playbackQueue = playbackQueue,
+                                            playlistId = null,
+                                            playlistName = stringResource(Res.string.playlist_liked_songs_title),
+                                        )
+
+                                        is Screen.Playlist -> PlaylistScreen(
+                                            apiService = apiService,
+                                            audioPlayer = audioPlayer,
+                                            activeSongInfo = activeSongInfo,
+                                            playbackQueue = playbackQueue,
+                                            playlistId = currentScreen.playlistId,
+                                            playlistName = currentScreen.playlistName,
+                                        )
+
+                                        Screen.Search -> SearchScreen(
+                                            apiService = apiService,
+                                            audioPlayer = audioPlayer,
+                                            activeSongInfo = activeSongInfo,
+                                            playbackQueue = playbackQueue,
+                                            query = searchQuery,
+                                            scrollState = scrollState,
+                                        )
+                                    }
+                                }
+
+                                AutoHidingScrollbar(
+                                    scrollState = scrollState,
+                                    modifier = Modifier
+                                        .align(Alignment.CenterEnd)
+                                        .fillMaxHeight(),
+                                )
+                            }
                         }
                     }
-                }
 
-                if (activeSongInfo.songId != null) {
-                    NowPlayingBottomWidget(
-                        audioPlayer = audioPlayer,
-                        activeSongInfo = activeSongInfo,
-                        playbackQueue = playbackQueue,
-                    )
+                    if (activeSongInfo.songId != null) {
+                        NowPlayingBottomWidget(
+                            audioPlayer = audioPlayer,
+                            activeSongInfo = activeSongInfo,
+                            playbackQueue = playbackQueue,
+                        )
+                    }
                 }
             }
         }

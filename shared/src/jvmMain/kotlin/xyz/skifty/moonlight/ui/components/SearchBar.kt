@@ -28,6 +28,7 @@ import moonlight.shared.generated.resources.cd_clear_search
 import moonlight.shared.generated.resources.cd_search
 import moonlight.shared.generated.resources.search_placeholder
 import org.jetbrains.compose.resources.stringResource
+import xyz.skifty.moonlight.ext.trackTextFieldFocus
 
 private val SEARCH_BAR_HEIGHT = 40.dp
 private val SEARCH_BAR_ICON_SIZE = 18.dp
@@ -82,7 +83,8 @@ fun SearchBar(
                     color = MaterialTheme.colorScheme.onSurface,
                 ),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurface),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth()
+                    .trackTextFieldFocus(),
             )
         }
 

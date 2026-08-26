@@ -71,13 +71,28 @@ class DesktopAudioPlayer {
     // the player was already playing before the switch and still is straight after it.
     private var pendingIsPlaying: Boolean? = null
 
+    // Real elapsed wall-clock time spent actually playing the current track - paused time
+    // excluded, unaffected by seeking - the input to JvmApp's scrobble-threshold decision (see
+    // listenedMs() below), as opposed to position, which seeking straight to a threshold and
+    // immediately skipping away would let you fake.
+    private var listenStartedAtMs: Long? = null
+    private var accumulatedListenMs: Long = 0L
+
+    // Describes whatever song play()/prepare()/stop() just replaced or cleared, captured right
+    // before that happens - see TrackLeftEvent and JvmApp's scrobbleIfNeeded.
+    var lastTrackLeft: TrackLeftEvent? by mutableStateOf(null)
+        private set
+
+    var trackLeftCount: Int by mutableStateOf(0)
+        private set
+
     init {
         // mpv pushes property changes asynchronously on its own IPC reader thread rather than us
         // polling for them - writing straight to Compose state from that thread is safe, exactly
         // like this same class's vlcj event listener used to do (see MprisService's threading
         // comment for why that matters).
         mpv.observeProperty("pause") { data ->
-            data.jsonPrimitive.booleanOrNull?.let { paused -> isPlaying = !paused }
+            data.jsonPrimitive.booleanOrNull?.let { paused -> setIsPlaying(!paused) }
         }
         mpv.observeProperty("time-pos") { data ->
             data.jsonPrimitive.doubleOrNull?.let { seconds -> cachedPositionMs = (seconds * 1000).toLong() }
@@ -89,22 +104,68 @@ class DesktopAudioPlayer {
         mpv.onEvent("file-loaded") {
             lastConfirmedStartPositionMs = pendingStartPositionMs ?: cachedPositionMs
             pendingStartPositionMs = null
-            pendingIsPlaying?.let { playing -> isPlaying = playing }
+            pendingIsPlaying?.let { playing -> setIsPlaying(playing) }
             pendingIsPlaying = null
             playbackStartedCount++
         }
 
         mpv.onEvent("end-file") { message ->
-            isPlaying = false
+            setIsPlaying(false)
             if (message.reason == "eof") {
                 trackFinishedCount++
             }
         }
     }
 
+    /** Routes every isPlaying transition through here rather than writing the backing field
+     *  directly, so [accumulatedListenMs] - real elapsed time spent actually playing, not just
+     *  time since playback started - stays accurate across pauses. */
+    private fun setIsPlaying(playing: Boolean) {
+        if (playing == isPlaying) {
+            return
+        }
+        val now = System.currentTimeMillis()
+        if (playing) {
+            listenStartedAtMs = now
+        } else {
+            listenStartedAtMs?.let { startedAt -> accumulatedListenMs += now - startedAt }
+            listenStartedAtMs = null
+        }
+        isPlaying = playing
+    }
+
+    private fun currentAccumulatedListenMs(): Long {
+        val inProgress = listenStartedAtMs?.let { startedAt -> System.currentTimeMillis() - startedAt } ?: 0L
+        return accumulatedListenMs + inProgress
+    }
+
+    private fun resetListenTracking() {
+        accumulatedListenMs = 0L
+        // If already playing right as a new track loads (e.g. skipping mid-playback), restart the
+        // clock immediately rather than waiting for setIsPlaying() to notice a change - it won't,
+        // since isPlaying's value (true) isn't actually changing.
+        listenStartedAtMs = if (isPlaying) System.currentTimeMillis() else null
+    }
+
+    /** How much of the currently-loaded track has actually been listened to in real time - paused
+     *  time excluded, and unaffected by seeking (unlike [currentPosition], which reflects where
+     *  playback currently sits and *does* jump on a seek). This, not position, is the input to
+     *  JvmApp's scrobble-threshold decision - seeking straight to the threshold and immediately
+     *  skipping away shouldn't count as a real listen. */
+    fun listenedMs(): Long = currentAccumulatedListenMs()
+
+    private fun captureTrackLeft(activeSongInfo: SongInfo) {
+        activeSongInfo.songId?.let { songId ->
+            lastTrackLeft = TrackLeftEvent(songId, currentAccumulatedListenMs(), cachedDurationMs)
+            trackLeftCount++
+        }
+    }
+
     fun length(): Long = cachedDurationMs
 
     fun play(songInfo: SongInfo, activeSongInfo: SongInfo) {
+        captureTrackLeft(activeSongInfo)
+        resetListenTracking()
         pendingStartPositionMs = 0L
         pendingIsPlaying = true
         // A fresh loadfile always starts at 0 - clear the cache immediately rather than waiting
@@ -118,12 +179,14 @@ class DesktopAudioPlayer {
         cachedDurationMs = 0L
         mpv.sendCommand("loadfile", songInfo.songPlaybackUrl ?: "", "replace")
         activeSongInfo.setSong(songInfo)
-        isPlaying = true
+        setIsPlaying(true)
     }
 
     /** Loads [songInfo] without starting playback - used to restore the last-played song as
      *  paused on app startup, without auto-playing it. */
     fun prepare(songInfo: SongInfo, activeSongInfo: SongInfo) {
+        captureTrackLeft(activeSongInfo)
+        resetListenTracking()
         pendingStartPositionMs = 0L
         pendingIsPlaying = false
         cachedPositionMs = 0L
@@ -135,13 +198,14 @@ class DesktopAudioPlayer {
         // lands.
         mpv.sendCommand("loadfile", songInfo.songPlaybackUrl ?: "", "replace", -1, "pause=yes")
         activeSongInfo.setSong(songInfo)
-        isPlaying = false
+        setIsPlaying(false)
     }
 
     fun stop(activeSongInfo: SongInfo) {
+        captureTrackLeft(activeSongInfo)
         mpv.sendCommand("stop")
         activeSongInfo.clear()
-        isPlaying = false
+        setIsPlaying(false)
     }
 
     /** Resumes/starts playback - a no-op if already playing. Unlike [togglePlayPause], this
@@ -149,7 +213,7 @@ class DesktopAudioPlayer {
     fun resume() {
         if (!isPlaying) {
             mpv.sendCommand("set_property", "pause", false)
-            isPlaying = true
+            setIsPlaying(true)
         }
     }
 
@@ -157,7 +221,7 @@ class DesktopAudioPlayer {
     fun pauseOnly() {
         if (isPlaying) {
             mpv.sendCommand("set_property", "pause", true)
-            isPlaying = false
+            setIsPlaying(false)
         }
     }
 

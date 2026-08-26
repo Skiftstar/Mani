@@ -45,6 +45,7 @@ import moonlight.shared.generated.resources.login_subtitle
 import moonlight.shared.generated.resources.login_username_label
 import org.jetbrains.compose.resources.stringResource
 import xyz.skifty.moonlight.api.ApiService
+import xyz.skifty.moonlight.ext.trackTextFieldFocus
 import xyz.skifty.moonlight.security.SecureStorageFactory
 
 /** A login-screen error that hasn't been resolved to displayable text yet - some variants need
@@ -138,7 +139,8 @@ fun LoginScreen(apiService: ApiService, onLoginSuccess: () -> Unit) {
                     onValueChange = { apiUrl = it },
                     singleLine = true,
                     enabled = !isLoading,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
+                        .trackTextFieldFocus(),
                     label = { Text(stringResource(Res.string.login_server_url_label)) },
                     placeholder = { Text("https://your-navidrome-server.com") },
                 )
@@ -147,7 +149,8 @@ fun LoginScreen(apiService: ApiService, onLoginSuccess: () -> Unit) {
                     onValueChange = { username = it },
                     singleLine = true,
                     enabled = !isLoading,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
+                        .trackTextFieldFocus(),
                     label = { Text(stringResource(Res.string.login_username_label)) },
                 )
                 OutlinedTextField(
@@ -155,7 +158,8 @@ fun LoginScreen(apiService: ApiService, onLoginSuccess: () -> Unit) {
                     onValueChange = { password = it },
                     singleLine = true,
                     enabled = !isLoading,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
+                        .trackTextFieldFocus(),
                     label = { Text(stringResource(Res.string.login_password_label)) },
                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     trailingIcon = {
