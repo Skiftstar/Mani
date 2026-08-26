@@ -1,0 +1,32 @@
+# Maintainer: Skiftstar
+# Local-build-only for now (per an explicit request not to publish to the AUR yet) - see the
+# rough edges noted below before ever actually submitting this.
+pkgname=moonlight-music
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="A Subsonic/Navidrome desktop music client"
+arch=('x86_64')
+url="https://github.com/Skiftstar/Moonlight"
+license=('MIT')
+depends=('mpv')
+makedepends=('jdk17-openjdk')
+source=("$pkgname::git+$url.git")
+sha256sums=('SKIP')
+
+build() {
+    cd "$pkgname"
+    ./gradlew :desktopApp:packageReleaseAppImage --no-daemon
+}
+
+package() {
+    cd "$pkgname"
+    # Confirmed against a real packageReleaseAppImage run - jpackage names the app-image folder
+    # and its launcher binary after packageName (desktopApp/build.gradle.kts), not something
+    # friendlier - both really are "xyz.skifty.moonlight", not "Moonlight".
+    local appimage_dir="desktopApp/build/compose/binaries/main-release/app/xyz.skifty.moonlight"
+    install -dm755 "$pkgdir/opt/$pkgname"
+    cp -r "$appimage_dir"/* "$pkgdir/opt/$pkgname/"
+    install -dm755 "$pkgdir/usr/bin"
+    ln -s "/opt/$pkgname/bin/xyz.skifty.moonlight" "$pkgdir/usr/bin/$pkgname"
+    install -Dm644 "$srcdir/../moonlight.desktop" "$pkgdir/usr/share/applications/$pkgname.desktop"
+}

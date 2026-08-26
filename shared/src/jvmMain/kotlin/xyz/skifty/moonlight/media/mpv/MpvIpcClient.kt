@@ -4,6 +4,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.channels.ByteChannel
@@ -63,7 +64,7 @@ class MpvIpcClient(
 
         process = try {
             ProcessBuilder(
-                "mpv", "--idle=yes", "--no-video", "--input-ipc-server=$socketPath",
+                resolveMpvExecutable(), "--idle=yes", "--no-video", "--input-ipc-server=$socketPath",
             )
                 // mpv logs to stdout/stderr regardless of --no-terminal - discard rather than pipe,
                 // so it can't ever block on a full pipe buffer we're not draining, and doesn't spam
@@ -242,6 +243,20 @@ class MpvIpcClient(
         eventListeners[eventName]?.forEach { listener -> listener(message) }
     }
 
+}
+
+/** The `mpv` executable to spawn - a bundled copy under this packaged app's own resources
+ *  directory if one's there (Windows only for now - see `desktopApp/build.gradle.kts`'s
+ *  `appResourcesRootDir`, since Windows has no system package manager to depend on mpv through
+ *  the way the Linux `.deb` does), otherwise a bare PATH lookup. `compose.application.resources.dir`
+ *  is only set at all inside a packaged app - never during a plain `./gradlew :desktopApp:run` -
+ *  so local dev runs always fall through to PATH, same as before this existed. */
+private fun resolveMpvExecutable(): String {
+    val exeName = if (System.getProperty("os.name").lowercase().contains("win")) "mpv.exe" else "mpv"
+    val resourcesDir = System.getProperty("compose.application.resources.dir")
+        ?: return exeName
+    val bundled = File(resourcesDir, exeName)
+    return if (bundled.exists()) bundled.absolutePath else exeName
 }
 
 private fun mpvInstallInstructions(): String {
