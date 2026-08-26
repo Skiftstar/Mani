@@ -27,18 +27,28 @@ import moonlight.shared.generated.resources.playlist_column_title
 import org.jetbrains.compose.resources.stringResource
 import xyz.skifty.moonlight.api.ApiService
 import xyz.skifty.moonlight.media.DesktopAudioPlayer
+import xyz.skifty.moonlight.media.PlaybackQueue
+import xyz.skifty.moonlight.media.PlaylistInfo
+import xyz.skifty.moonlight.media.PlaylistLibrary
 import xyz.skifty.moonlight.media.SongInfo
 
 /** Column headers followed by one [PlaylistSongRow] per song. Owns the star/unstar toggle
  *  (calling [apiService] and optimistically flipping [SongInfo.starred], reverting it if the
- *  request fails) so every screen using this table gets identical behavior for free. */
+ *  request fails) so every screen using this table gets identical behavior for free - likewise
+ *  for each row's context-menu actions (Play/Add to Queue/Add to Playlist), all constructed here
+ *  from [playbackQueue]/[apiService] rather than threading those services into [PlaylistSongRow]
+ *  itself. [onRemoveFromPlaylist] is left null by screens where it doesn't apply (Liked Songs,
+ *  search results) - [PlaylistSongRow] hides that menu item entirely when it's null. */
 @Composable
 fun PlaylistSongTable(
     songs: List<SongInfo>,
     audioPlayer: DesktopAudioPlayer,
     activeSongInfo: SongInfo,
     apiService: ApiService,
+    playbackQueue: PlaybackQueue,
+    playlistLibrary: PlaylistLibrary,
     onSongClick: (index: Int) -> Unit,
+    onRemoveFromPlaylist: ((index: Int) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -56,6 +66,24 @@ fun PlaylistSongTable(
             }
             if (result.isFailure) {
                 songInfo.starred = wasStarred
+            }
+        }
+    }
+
+    fun addToPlaylist(songInfo: SongInfo, playlist: PlaylistInfo) {
+        val songId = songInfo.songId
+            ?: return
+        coroutineScope.launch {
+            val alreadyInPlaylist = playlistLibrary.containsSong(apiService, playlist.id, songId)
+            if (!alreadyInPlaylist) {
+                val result = apiService.addSongToPlaylist(playlist.id, songId)
+                if (result.isSuccess) {
+                    playlistLibrary.recordSongAdded(playlist.id, songId)
+                    // Picked up by every reader of playlistLibrary.playlists automatically
+                    // (Sidebar in particular) - a playlist's cover art can be auto-derived from
+                    // its songs, so adding one can change what should be shown for it.
+                    playlistLibrary.refreshPlaylists(apiService)
+                }
             }
         }
     }
@@ -114,11 +142,25 @@ fun PlaylistSongTable(
                 songInfo = songInfo,
                 audioPlayer = audioPlayer,
                 activeSongInfo = activeSongInfo,
+                apiService = apiService,
+                playlistLibrary = playlistLibrary,
                 onClick = {
                     onSongClick(index)
                 },
                 onToggleStar = {
                     toggleStar(songInfo)
+                },
+                onPlay = {
+                    playbackQueue.start(listOf(songInfo), 0, sourceId = null)
+                },
+                onAddToQueue = {
+                    playbackQueue.addToEnd(songInfo)
+                },
+                onAddToPlaylist = { playlist ->
+                    addToPlaylist(songInfo, playlist)
+                },
+                onRemoveFromPlaylist = onRemoveFromPlaylist?.let { callback ->
+                    { callback(index) }
                 },
             )
         }

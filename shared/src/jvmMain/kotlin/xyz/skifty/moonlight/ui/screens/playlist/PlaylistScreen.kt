@@ -12,14 +12,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import xyz.skifty.moonlight.api.ApiService
 import xyz.skifty.moonlight.media.DesktopAudioPlayer
 import xyz.skifty.moonlight.media.PlaybackQueue
 import xyz.skifty.moonlight.media.PlaylistDetails
+import xyz.skifty.moonlight.media.PlaylistLibrary
 import xyz.skifty.moonlight.media.SongInfo
 import xyz.skifty.moonlight.ui.components.PlaylistSongTable
 import xyz.skifty.moonlight.ui.screens.playlist.components.PlaylistActionsRow
@@ -31,11 +34,13 @@ fun PlaylistScreen(
     audioPlayer: DesktopAudioPlayer,
     activeSongInfo: SongInfo,
     playbackQueue: PlaybackQueue,
+    playlistLibrary: PlaylistLibrary,
     playlistId: String?,
     playlistName: String,
 ) {
 
     var details by remember(playlistId) { mutableStateOf<PlaylistDetails?>(null) }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(playlistId) {
         details = if (playlistId == null) {
@@ -78,8 +83,38 @@ fun PlaylistScreen(
                 audioPlayer = audioPlayer,
                 activeSongInfo = activeSongInfo,
                 apiService = apiService,
+                playbackQueue = playbackQueue,
+                playlistLibrary = playlistLibrary,
                 onSongClick = { index ->
                     playbackQueue.start(currentDetails.songs, index, playlistId)
+                },
+                // Never shown for Liked Songs (playlistId == null) - there's no Subsonic
+                // playlist id to remove a song from there; unstarring is the equivalent action,
+                // already covered by the Like/Unlike item.
+                onRemoveFromPlaylist = playlistId?.let { pid ->
+                    { index: Int ->
+                        val song = currentDetails.songs.getOrNull(index)
+                        val songId = song?.songId
+                        if (song != null && songId != null) {
+                            val previous = currentDetails
+                            // Optimistic - rolled back wholesale on failure rather than trying to
+                            // re-insert at a possibly-now-stale index.
+                            details = currentDetails.copy(songs = currentDetails.songs - song)
+                            scope.launch {
+                                val result = apiService.removeSongFromPlaylist(pid, index)
+                                if (result.isFailure) {
+                                    details = previous
+                                } else {
+                                    playlistLibrary.recordSongRemoved(pid, songId)
+                                    // Picked up by every reader of playlistLibrary.playlists
+                                    // automatically (Sidebar in particular) - same reasoning as
+                                    // the add side: a playlist's cover art can be auto-derived
+                                    // from its songs, so removing one can change it too.
+                                    playlistLibrary.refreshPlaylists(apiService)
+                                }
+                            }
+                        }
+                    }
                 },
             )
         }

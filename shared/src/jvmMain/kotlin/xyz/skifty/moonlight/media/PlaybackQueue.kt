@@ -67,6 +67,18 @@ class PlaybackQueue(
         playCurrent()
     }
 
+    /** Appends [song] to the end of the current queue without interrupting playback. If nothing's
+     *  queued yet, there's nothing to append to - starts a fresh single-song queue instead, same
+     *  as [start] would for a plain "play this song now". */
+    fun addToEnd(song: SongInfo) {
+        if (songs.isEmpty()) {
+            start(listOf(song), 0, sourceId = null)
+            return
+        }
+        songs = songs + song
+        playOrder = playOrder + songs.lastIndex
+    }
+
     fun setShuffle(enabled: Boolean) {
         if (shuffleEnabled == enabled) {
             return

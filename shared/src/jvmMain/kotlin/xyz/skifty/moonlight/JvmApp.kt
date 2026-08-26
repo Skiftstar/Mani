@@ -46,6 +46,7 @@ import moonlight.shared.generated.resources.playlist_liked_songs_title
 import org.jetbrains.compose.resources.stringResource
 import xyz.skifty.moonlight.media.DesktopAudioPlayer
 import xyz.skifty.moonlight.media.PlaybackQueue
+import xyz.skifty.moonlight.media.PlaylistLibrary
 import xyz.skifty.moonlight.media.mpris.MprisService
 import xyz.skifty.moonlight.ui.components.AutoHidingScrollbar
 import xyz.skifty.moonlight.ui.components.SearchBar
@@ -79,6 +80,7 @@ fun JvmApp() {
             activeSongInfo = activeSongInfo,
         )
     }
+    val playlistLibrary = remember { PlaylistLibrary() }
     val apiService = remember { ApiService() }
     val secureStorage = remember { SecureStorageFactory.create() }
     val appPreferences = remember { AppPreferencesFactory.create() }
@@ -388,6 +390,7 @@ fun JvmApp() {
                         if (screen == Screen.Home || screen == Screen.LikedSongs || screen == Screen.Search || screen is Screen.Playlist) {
                             Sidebar(
                                 apiService = apiService,
+                                playlistLibrary = playlistLibrary,
                                 onHomeClick = { navigate(Screen.Home) },
                                 onLikedSongsClick = { navigate(Screen.LikedSongs) },
                                 onPlaylistClick = { playlist ->
@@ -450,6 +453,7 @@ fun JvmApp() {
                                             audioPlayer = audioPlayer,
                                             activeSongInfo = activeSongInfo,
                                             playbackQueue = playbackQueue,
+                                            playlistLibrary = playlistLibrary,
                                             playlistId = null,
                                             playlistName = stringResource(Res.string.playlist_liked_songs_title),
                                         )
@@ -459,6 +463,7 @@ fun JvmApp() {
                                             audioPlayer = audioPlayer,
                                             activeSongInfo = activeSongInfo,
                                             playbackQueue = playbackQueue,
+                                            playlistLibrary = playlistLibrary,
                                             playlistId = currentScreen.playlistId,
                                             playlistName = currentScreen.playlistName,
                                         )
@@ -468,6 +473,7 @@ fun JvmApp() {
                                             audioPlayer = audioPlayer,
                                             activeSongInfo = activeSongInfo,
                                             playbackQueue = playbackQueue,
+                                            playlistLibrary = playlistLibrary,
                                             query = searchQuery,
                                             scrollState = scrollState,
                                         )

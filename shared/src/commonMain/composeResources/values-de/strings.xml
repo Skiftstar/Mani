@@ -54,6 +54,15 @@
     <string name="cd_star">Zu Lieblingssongs hinzufügen</string>
     <string name="cd_unstar">Aus Lieblingssongs entfernen</string>
 
+    <!-- Song context menu -->
+    <string name="context_menu_play">Wiedergeben</string>
+    <string name="context_menu_add_to_queue">Zur Warteschlange hinzufügen</string>
+    <string name="context_menu_like">Favorisieren</string>
+    <string name="context_menu_unlike">Favorit entfernen</string>
+    <string name="context_menu_add_to_playlist">Zur Playlist hinzufügen</string>
+    <string name="context_menu_remove_from_playlist">Aus Playlist entfernen</string>
+    <string name="context_menu_no_playlists">Du hast noch keine Playlists</string>
+
     <!-- Title bar -->
     <string name="cd_minimize_window">Minimieren</string>
     <string name="cd_maximize_window">Maximieren</string>

@@ -282,4 +282,47 @@ class ApiService {
         }
     }
 
+    /** Adds [songId] to the end of [playlistId]. Uses `updatePlaylist`, not `createPlaylist` -
+     *  calling `createPlaylist` with an existing playlist id overwrites/replaces its entire song
+     *  list on Navidrome instead of appending to it, which is exactly the trap this avoids. */
+    suspend fun addSongToPlaylist(playlistId: String, songId: String): Result<Unit> {
+        return try {
+            val result = httpClient.get(
+                buildUrl(
+                    "/rest/updatePlaylist",
+                    mapOf("playlistId" to playlistId, "songIdToAdd" to songId),
+                ),
+            )
+            if (result.status.isSuccess()) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Server returned HTTP ${result.status.value}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception("Could not reach server: ${e.message}", e))
+        }
+    }
+
+    /** Removes the song at zero-based [songIndex] from [playlistId]. Subsonic's `updatePlaylist`
+     *  only supports removal by position (`songIndexToRemove`), not by song id - callers must
+     *  pass the song's current index within [xyz.skifty.moonlight.media.PlaylistDetails.songs],
+     *  the same order the server returned it in. */
+    suspend fun removeSongFromPlaylist(playlistId: String, songIndex: Int): Result<Unit> {
+        return try {
+            val result = httpClient.get(
+                buildUrl(
+                    "/rest/updatePlaylist",
+                    mapOf("playlistId" to playlistId, "songIndexToRemove" to songIndex.toString()),
+                ),
+            )
+            if (result.status.isSuccess()) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Server returned HTTP ${result.status.value}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception("Could not reach server: ${e.message}", e))
+        }
+    }
+
 }

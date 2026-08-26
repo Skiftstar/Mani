@@ -27,6 +27,7 @@ import org.jetbrains.compose.resources.stringResource
 import xyz.skifty.moonlight.api.ApiService
 import xyz.skifty.moonlight.media.DesktopAudioPlayer
 import xyz.skifty.moonlight.media.PlaybackQueue
+import xyz.skifty.moonlight.media.PlaylistLibrary
 import xyz.skifty.moonlight.media.SongInfo
 import xyz.skifty.moonlight.ui.components.PlaylistSongTable
 
@@ -49,6 +50,7 @@ fun SearchScreen(
     audioPlayer: DesktopAudioPlayer,
     activeSongInfo: SongInfo,
     playbackQueue: PlaybackQueue,
+    playlistLibrary: PlaylistLibrary,
     query: String,
     scrollState: ScrollState,
 ) {
@@ -134,6 +136,8 @@ fun SearchScreen(
                     audioPlayer = audioPlayer,
                     activeSongInfo = activeSongInfo,
                     apiService = apiService,
+                    playbackQueue = playbackQueue,
+                    playlistLibrary = playlistLibrary,
                     onSongClick = { index ->
                         // Clears the queue and plays only the clicked song - a singleton list
                         // makes hasNext/hasPrevious correctly report false.

@@ -31,10 +31,6 @@ import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,20 +45,26 @@ import moonlight.shared.generated.resources.cd_liked_songs
 import org.jetbrains.compose.resources.stringResource
 import xyz.skifty.moonlight.api.ApiService
 import xyz.skifty.moonlight.media.PlaylistInfo
+import xyz.skifty.moonlight.media.PlaylistLibrary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Sidebar(
     apiService: ApiService,
+    playlistLibrary: PlaylistLibrary,
     onHomeClick: () -> Unit,
     onLikedSongsClick: () -> Unit,
     onPlaylistClick: (PlaylistInfo) -> Unit,
 ) {
 
-    var playlists by remember { mutableStateOf<List<PlaylistInfo>>(emptyList()) }
+    // Reads playlistLibrary directly rather than keeping its own separate fetch/state - anything
+    // that refreshes playlistLibrary (e.g. adding a song to a playlist, which can change a
+    // playlist's auto-derived cover art) is picked up here automatically too, since it's the same
+    // Compose state either way.
+    val playlists = playlistLibrary.playlists ?: emptyList()
 
     LaunchedEffect(Unit) {
-        playlists = apiService.getPlaylists()
+        playlistLibrary.ensureLoaded(apiService)
     }
 
     Row(modifier = Modifier.fillMaxHeight()) {

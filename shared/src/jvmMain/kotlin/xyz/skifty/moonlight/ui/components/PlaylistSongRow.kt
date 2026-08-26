@@ -2,6 +2,7 @@ package xyz.skifty.moonlight.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,9 +31,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -46,15 +52,18 @@ import moonlight.shared.generated.resources.cd_unstar
 import moonlight.shared.generated.resources.unknown_artist
 import moonlight.shared.generated.resources.unknown_title
 import org.jetbrains.compose.resources.stringResource
+import xyz.skifty.moonlight.api.ApiService
 import xyz.skifty.moonlight.ext.toDurationLabel
 import xyz.skifty.moonlight.media.DesktopAudioPlayer
+import xyz.skifty.moonlight.media.PlaylistInfo
+import xyz.skifty.moonlight.media.PlaylistLibrary
 import xyz.skifty.moonlight.media.SongInfo
 
 /** One row of [PlaylistSongTable] - row number (swaps to a play/pause icon on hover), cover
  *  thumbnail + title/artist, quality, duration, and a star/unstar toggle. Whenever this row's
  *  song is the one currently loaded in [audioPlayer] (per [activeSongInfo]), its text is tinted
  *  the accent color and clicking it toggles play/pause instead of restarting the track from the
- *  beginning. */
+ *  beginning. Right-clicking opens [SongContextMenu]. */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun PlaylistSongRow(
@@ -62,8 +71,14 @@ fun PlaylistSongRow(
     songInfo: SongInfo,
     audioPlayer: DesktopAudioPlayer,
     activeSongInfo: SongInfo,
+    apiService: ApiService,
+    playlistLibrary: PlaylistLibrary,
     onClick: () -> Unit,
     onToggleStar: () -> Unit,
+    onPlay: () -> Unit,
+    onAddToQueue: () -> Unit,
+    onAddToPlaylist: (PlaylistInfo) -> Unit,
+    onRemoveFromPlaylist: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     var isHovered by remember { mutableStateOf(false) }
@@ -73,101 +88,145 @@ fun PlaylistSongRow(
     val contentColor = if (isActive) MaterialTheme.colorScheme.primary else LocalContentColor.current
     val secondaryColor = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
 
-    Row(
+    // Compose has no single built-in "onRightClick" modifier - detected by hand, same reasoning
+    // ProgressSlider.kt's own hand-rolled gesture handling gives for not using the convenience
+    // detectors where they don't fit.
+    //
+    // The menu's position is tracked in actual window coordinates (this row's own position via
+    // onGloballyPositioned, plus the click's position within it) rather than raw local/anchor-
+    // relative offsets - SongContextMenu is itself a Popup, and once a Popup ends up nested
+    // inside another Popup's content (its "Add to Playlist" flyout is), Compose's automatic
+    // anchor-bounds resolution doesn't reliably see through that nesting - see
+    // FixedPositionProvider for the fix this feeds into.
+    var rowPositionInWindow by remember { mutableStateOf(Offset.Zero) }
+    var contextMenuPosition by remember { mutableStateOf<Offset?>(null) }
+
+    Box(
         modifier = modifier
-            .fillMaxWidth()
-            .clickable(
-                onClick = {
-                    if (isActive) {
-                        audioPlayer.togglePlayPause()
-                    } else {
-                        onClick()
+            .onGloballyPositioned { coordinates -> rowPositionInWindow = coordinates.positionInWindow() }
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        if (event.type == PointerEventType.Press && event.buttons.isSecondaryPressed) {
+                            contextMenuPosition = rowPositionInWindow + event.changes.first().position
+                            event.changes.forEach { change -> change.consume() }
+                        }
                     }
-                },
-            )
-            .onPointerEvent(PointerEventType.Enter) { isHovered = true }
-            .onPointerEvent(PointerEventType.Exit) { isHovered = false }
-            .padding(
-                horizontal = 16.dp,
-                vertical = 8.dp,
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                }
+            },
     ) {
-        Box(
-            modifier = Modifier.width(24.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (isHovered) {
-                Icon(
-                    imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                    contentDescription = stringResource(
-                        if (isPlaying) Res.string.cd_pause else Res.string.cd_play,
-                    ),
-                    modifier = Modifier.size(16.dp),
-                    tint = contentColor,
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(
+                    onClick = {
+                        if (isActive) {
+                            audioPlayer.togglePlayPause()
+                        } else {
+                            onClick()
+                        }
+                    },
                 )
-            } else {
+                .onPointerEvent(PointerEventType.Enter) { isHovered = true }
+                .onPointerEvent(PointerEventType.Exit) { isHovered = false }
+                .padding(
+                    horizontal = 16.dp,
+                    vertical = 8.dp,
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                modifier = Modifier.width(24.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (isHovered) {
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        contentDescription = stringResource(
+                            if (isPlaying) Res.string.cd_pause else Res.string.cd_play,
+                        ),
+                        modifier = Modifier.size(16.dp),
+                        tint = contentColor,
+                    )
+                } else {
+                    Text(
+                        text = index.toString(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = secondaryColor,
+                    )
+                }
+            }
+
+            AsyncImage(
+                model = songInfo.songCoverArtUrl,
+                contentDescription = stringResource(Res.string.cd_album_art),
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentScale = ContentScale.Crop,
+            )
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = index.toString(),
+                    text = songInfo.songName ?: stringResource(Res.string.unknown_title),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = contentColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = songInfo.songArtist ?: stringResource(Res.string.unknown_artist),
                     style = MaterialTheme.typography.bodyMedium,
                     color = secondaryColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+
+            Text(
+                text = qualityLabel(songInfo),
+                style = MaterialTheme.typography.bodyMedium,
+                color = secondaryColor,
+                modifier = Modifier.width(80.dp),
+            )
+
+            Text(
+                text = songInfo.songDurationSeconds?.toDurationLabel() ?: "--:--",
+                style = MaterialTheme.typography.bodyMedium,
+                color = secondaryColor,
+                textAlign = TextAlign.End,
+                modifier = Modifier.width(48.dp),
+            )
+
+            IconButton(
+                onClick = onToggleStar,
+                modifier = Modifier.size(32.dp),
+            ) {
+                Icon(
+                    imageVector = if (songInfo.starred) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                    contentDescription = stringResource(
+                        if (songInfo.starred) Res.string.cd_unstar else Res.string.cd_star,
+                    ),
+                    modifier = Modifier.size(20.dp),
+                    tint = if (songInfo.starred) MaterialTheme.colorScheme.primary else secondaryColor,
                 )
             }
         }
 
-        AsyncImage(
-            model = songInfo.songCoverArtUrl,
-            contentDescription = stringResource(Res.string.cd_album_art),
-            modifier = Modifier
-                .size(48.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentScale = ContentScale.Crop,
-        )
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = songInfo.songName ?: stringResource(Res.string.unknown_title),
-                style = MaterialTheme.typography.bodyLarge,
-                color = contentColor,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = songInfo.songArtist ?: stringResource(Res.string.unknown_artist),
-                style = MaterialTheme.typography.bodyMedium,
-                color = secondaryColor,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-
-        Text(
-            text = qualityLabel(songInfo),
-            style = MaterialTheme.typography.bodyMedium,
-            color = secondaryColor,
-            modifier = Modifier.width(80.dp),
-        )
-
-        Text(
-            text = songInfo.songDurationSeconds?.toDurationLabel() ?: "--:--",
-            style = MaterialTheme.typography.bodyMedium,
-            color = secondaryColor,
-            textAlign = TextAlign.End,
-            modifier = Modifier.width(48.dp),
-        )
-
-        IconButton(
-            onClick = onToggleStar,
-            modifier = Modifier.size(32.dp),
-        ) {
-            Icon(
-                imageVector = if (songInfo.starred) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                contentDescription = stringResource(
-                    if (songInfo.starred) Res.string.cd_unstar else Res.string.cd_star,
-                ),
-                modifier = Modifier.size(20.dp),
-                tint = if (songInfo.starred) MaterialTheme.colorScheme.primary else secondaryColor,
+        contextMenuPosition?.let { position ->
+            SongContextMenu(
+                positionInWindow = position,
+                onDismissRequest = { contextMenuPosition = null },
+                songInfo = songInfo,
+                apiService = apiService,
+                playlistLibrary = playlistLibrary,
+                onPlay = onPlay,
+                onAddToQueue = onAddToQueue,
+                onToggleStar = onToggleStar,
+                onAddToPlaylist = onAddToPlaylist,
+                onRemoveFromPlaylist = onRemoveFromPlaylist,
             )
         }
     }
