@@ -1,0 +1,16 @@
+package xyz.skifty.mani.models
+
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class ResponseSongInfo(
+    val id: String,
+    val title: String,
+    val artist: String,
+    val album: String? = null,
+    val duration: Int? = null,
+    val coverArt: String? = null,
+    val bitRate: Int? = null,
+    val suffix: String? = null,
+    val starred: String? = null,
+)

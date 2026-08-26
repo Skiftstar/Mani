@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Moonlight</string>
+    <string name="app_name">Mani</string>
 
     <!-- Login screen -->
     <string name="login_subtitle">Sign in to your Navidrome server</string>

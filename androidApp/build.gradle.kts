@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "xyz.skifty.moonlight"
+    namespace = "xyz.skifty.mani"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "xyz.skifty.moonlight"
+        applicationId = "xyz.skifty.mani"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1

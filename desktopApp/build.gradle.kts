@@ -22,7 +22,7 @@ kotlin {
 
 compose.desktop {
     application {
-        mainClass = "xyz.skifty.moonlight.MainKt"
+        mainClass = "xyz.skifty.mani.MainKt"
 
         // ProGuard shrinking broke real Windows/Linux installs at runtime - confirmed by hand:
         // ktor-client-cio's engine is only ever loaded reflectively (via ServiceLoader, reading a
@@ -42,7 +42,7 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.AppImage)
-            packageName = "xyz.skifty.moonlight"
+            packageName = "xyz.skifty.mani"
             packageVersion = "1.0.0"
 
             // The packaged app ships a custom jlink-trimmed JDK runtime (createRuntimeImage),

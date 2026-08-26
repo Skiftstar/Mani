@@ -1,12 +1,12 @@
 # Maintainer: Skiftstar
 # Local-build-only for now (per an explicit request not to publish to the AUR yet) - see the
 # rough edges noted below before ever actually submitting this.
-pkgname=moonlight-music
+pkgname=mani
 pkgver=1.0.0
 pkgrel=1
 pkgdesc="A Subsonic/Navidrome desktop music client"
 arch=('x86_64')
-url="https://github.com/Skiftstar/Moonlight"
+url="https://github.com/Skiftstar/Mani"
 license=('MIT')
 depends=('mpv')
 makedepends=('jdk17-openjdk')
@@ -22,11 +22,11 @@ package() {
     cd "$pkgname"
     # Confirmed against a real packageReleaseAppImage run - jpackage names the app-image folder
     # and its launcher binary after packageName (desktopApp/build.gradle.kts), not something
-    # friendlier - both really are "xyz.skifty.moonlight", not "Moonlight".
-    local appimage_dir="desktopApp/build/compose/binaries/main-release/app/xyz.skifty.moonlight"
+    # friendlier - both really are "xyz.skifty.mani", not "Mani".
+    local appimage_dir="desktopApp/build/compose/binaries/main-release/app/xyz.skifty.mani"
     install -dm755 "$pkgdir/opt/$pkgname"
     cp -r "$appimage_dir"/* "$pkgdir/opt/$pkgname/"
     install -dm755 "$pkgdir/usr/bin"
-    ln -s "/opt/$pkgname/bin/xyz.skifty.moonlight" "$pkgdir/usr/bin/$pkgname"
-    install -Dm644 "$srcdir/../moonlight.desktop" "$pkgdir/usr/share/applications/$pkgname.desktop"
+    ln -s "/opt/$pkgname/bin/xyz.skifty.mani" "$pkgdir/usr/bin/$pkgname"
+    install -Dm644 "$srcdir/../mani.desktop" "$pkgdir/usr/share/applications/$pkgname.desktop"
 }

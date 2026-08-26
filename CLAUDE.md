@@ -60,7 +60,7 @@ ui
 
 ### Extension functions
 
-- placed under `xyz.skifty.moonlight.ext`
+- placed under `xyz.skifty.mani.ext`
 - file name must be `{ExtendedType}Ext.kt` (e.g. `StringExt.kt`, `ListExt.kt`, `MaterialThemeExt.kt`)
 - follow the examples below
 
@@ -424,13 +424,13 @@ private val localizedProductJson =
 
 ### i18n / String Resources
 
-- Use `stringResource(Res.string.xxx)` from `moonlight.shared.generated.resources` for all static UI strings, never hardcode text
+- Use `stringResource(Res.string.xxx)` from `mani.shared.generated.resources` for all static UI strings, never hardcode text
 - Use `pluralStringResource(Res.plurals.xxx, count, ...)` for plural strings (count selects form AND fills `%d`)
 - Imports: import both `Res` AND each individual resource val, plus `stringResource`:
 
   ```
-  import moonlight.shared.generated.resources.Res
-  import moonlight.shared.generated.resources.login_username_label
+  import mani.shared.generated.resources.Res
+  import mani.shared.generated.resources.login_username_label
   import org.jetbrains.compose.resources.stringResource
   ```
 

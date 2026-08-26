@@ -1,8 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Moonlight
-Comment=A Subsonic/Navidrome desktop music client
-Exec=moonlight-music
-Icon=/opt/moonlight-music/lib/xyz.skifty.moonlight.png
-Terminal=false
-Categories=AudioVideo;Audio;Player;

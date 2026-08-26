@@ -1,0 +1,14 @@
+package xyz.skifty.mani.media
+
+/** [id] is null for the Liked (Starred) Songs pseudo-playlist, which has no Subsonic playlist id. */
+data class PlaylistDetails(
+    val id: String?,
+
+    val name: String,
+
+    val coverArtUrl: String?,
+
+    val ownerName: String?,
+
+    val songs: List<SongInfo>,
+)

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Mani
+Comment=A Subsonic/Navidrome desktop music client
+Exec=mani
+Icon=/opt/mani/lib/xyz.skifty.mani.png
+Terminal=false
+Categories=AudioVideo;Audio;Player;

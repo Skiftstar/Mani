@@ -24,10 +24,10 @@ desktopApp/resources/windows/mpv.exe
 desktopApp/resources/windows/d3dcompiler_43.dll
 
 # makepkg build artifacts (packaging/arch/PKGBUILD) - src/ and pkg/ are makepkg's own internal
-# working directories; moonlight-music/ is the actual git checkout it clones per the PKGBUILD's
+# working directories; mani/ is the actual git checkout it clones per the PKGBUILD's
 # source=("$pkgname::git+...") (named after pkgname, not nested under src/ as might be expected).
 packaging/arch/src/
 packaging/arch/pkg/
-packaging/arch/moonlight-music/
+packaging/arch/mani/
 packaging/arch/*.pkg.tar.*
 

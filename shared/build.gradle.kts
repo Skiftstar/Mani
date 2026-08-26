@@ -10,7 +10,7 @@ plugins {
 
 kotlin {
     android {
-        namespace = "xyz.skifty.moonlight.shared"
+        namespace = "xyz.skifty.mani.shared"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
 

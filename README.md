@@ -1,4 +1,4 @@
-# Moonlight
+# Mani
 
 A Subsonic/Navidrome desktop music client, built with Kotlin Multiplatform
 and Compose Multiplatform. Playback is driven by [mpv](https://mpv.io/) over
@@ -19,7 +19,7 @@ Prebuilt packages are attached to each [GitHub Release](../../releases):
 | Arch Linux (AUR) | TODO - not published yet |
 
 Linux `.deb` installs declare `mpv` as a package dependency, so your package
-manager installs it automatically alongside Moonlight if it isn't already
+manager installs it automatically alongside Mani if it isn't already
 present. The Windows `.msi` bundles its own copy of `mpv` directly, since
 Windows has no equivalent system package manager to depend on it through.
 
@@ -51,7 +51,7 @@ doesn't expose a way to declare that directly.
 ### Arch Linux, via the local `PKGBUILD`
 
 [`packaging/arch/PKGBUILD`](packaging/arch/PKGBUILD) builds and installs
-Moonlight the normal Arch way:
+Mani the normal Arch way:
 
 ```shell
 cd packaging/arch
