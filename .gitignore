@@ -17,3 +17,14 @@ captures
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
 node_modules/
+
+# Fetched at build time by downloadMpvForWindows (desktopApp/build.gradle.kts) rather than
+# committed - too large for a normal git push (GitHub's 100MB per-file limit).
+desktopApp/resources/windows/mpv.exe
+desktopApp/resources/windows/d3dcompiler_43.dll
+
+# makepkg build artifacts (packaging/arch/PKGBUILD)
+packaging/arch/src/
+packaging/arch/pkg/
+packaging/arch/*.pkg.tar.zst
+
