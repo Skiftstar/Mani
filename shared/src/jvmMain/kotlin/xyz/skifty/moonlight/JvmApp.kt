@@ -94,6 +94,12 @@ fun JvmApp() {
                 playbackQueue = playbackQueue,
             )
         }
+            .onFailure { e ->
+                // Previously swallowed with zero diagnostic output - impossible to tell "no
+                // session bus reachable" (expected/tolerated) apart from a real bug without this.
+                System.err.println("MPRIS unavailable, continuing without it: $e")
+                e.printStackTrace()
+            }
             .getOrNull()
     }
 

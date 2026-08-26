@@ -45,6 +45,18 @@ compose.desktop {
             packageName = "xyz.skifty.moonlight"
             packageVersion = "1.0.0"
 
+            // The packaged app ships a custom jlink-trimmed JDK runtime (createRuntimeImage),
+            // built from whatever modules static analysis detects the app needs - confirmed by
+            // hand to miss jdk.security.auth (com.sun.security.auth.module.UnixSystem), which
+            // dbus-java's SASL authentication only reaches reflectively, breaking MPRIS silently
+            // in the packaged build despite working fine under a plain `./gradlew run` (full JDK,
+            // every module present). Same reasoning as disabling ProGuard above: a narrow
+            // `modules("jdk.security.auth")` fix would only address today's specific symptom, not
+            // whatever else jna/dbus-java might reach reflectively elsewhere and hasn't surfaced
+            // yet - full JDK modules trades runtime size for not chasing this class of bug one
+            // missing module at a time.
+            includeAllModules = true
+
             // Bundled per-OS extra files - only resources/windows/ is populated (mpv.exe +
             // d3dcompiler_43.dll, fetched at build time by downloadMpvForWindows below rather than
             // committed - see that task for why). resources/linux/ and resources/macos/ are the
