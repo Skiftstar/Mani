@@ -22,7 +22,33 @@ kotlin {
 
 // Pulled out to top-level vals so packageReleaseAppImageBundle below can reuse the same values
 // rather than re-hardcoding them.
-val desktopPackageName = "xyz.skifty.mani"
+//
+// jpackage's --name (Compose's nativeDistributions.packageName) is a single value shared by every
+// target format in this one nativeDistributions block - confirmed by decompiling this project's
+// resolved Compose Gradle plugin jar (org.jetbrains.compose:compose-gradle-plugin:1.12.0):
+// WindowsPlatformSettings carries no packageName field of its own (unlike LinuxPlatformSettings and
+// AbstractMacOSPlatformSettings, which do), and AbstractJPackageTask feeds jpackage's --name flag
+// from this one shared property in every case. The only Linux-specific override that exists,
+// linux.packageName, feeds a *different* jpackage flag, --linux-package-name, which only renames the
+// built .deb's "Package:" control-file metadata - not the actual installed exec name, app-image
+// folder, or .desktop Exec=/Icon= values jpackage derives from --name, which
+// packageReleaseAppImageBundle below still relies on being "xyz.skifty.mani". So there's no DSL
+// property that overrides just the Windows-facing name while leaving Linux's untouched.
+//
+// What makes swapping this one shared value safe anyway: this build only ever registers one
+// jpackage-backed task per host OS - Compose's plugin only registers packageMsi/packageReleaseMsi on
+// Windows hosts, and packageDeb/packageAppImage on Linux hosts (see the packageMsi tasks.matching
+// comment further down) - so a Windows host building packageReleaseMsi never also needs the Linux
+// name in the same run, and vice versa. TargetFormat.Msi.isCompatibleWithCurrentOS() - the same check
+// Compose's own plugin uses to decide whether to register packageMsi at all - picks "Mani" (a clean
+// Windows installer/Start-Menu/Add-Remove-Programs/install-dir name) on Windows hosts, and leaves the
+// existing "xyz.skifty.mani" value in place everywhere else, so the .deb/.AppImage naming this file's
+// Linux-only tasks below depend on is unaffected.
+val desktopPackageName = if (TargetFormat.Msi.isCompatibleWithCurrentOS) {
+    "Mani"
+} else {
+    "xyz.skifty.mani"
+}
 val desktopPackageVersion = "1.0.0"
 
 compose.desktop {
@@ -49,6 +75,22 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.AppImage)
             packageName = desktopPackageName
             packageVersion = desktopPackageVersion
+            vendor = "Mani"
+
+            // Windows only ("windows {}" is a no-op on other hosts - jpackage's --win-* flags
+            // simply don't apply there). Setting menuGroup here doesn't just group the Start Menu
+            // entry - it's also what turns the entry on in the first place: Compose's own
+            // WindowsPlatformSettings.getMenu() (confirmed by decompiling WindowsPlatformSettings)
+            // is a computed `menu || menuGroup != null`, and neither was ever set before this
+            // block existed, so jpackage's --win-menu flag was never passed and no Start Menu
+            // shortcut was created at all. upgradeUuid is pinned rather than left for jpackage to
+            // auto-derive from packageName, since that derivation would otherwise silently change
+            // the MSI's UpgradeCode the moment packageName above changed from "xyz.skifty.mani" to
+            // "Mani", breaking upgrade-in-place detection against any previously published release.
+            windows {
+                menuGroup = "Mani"
+                upgradeUuid = "25c62f15-4c9a-4f5f-9190-08d6cc8f8972"
+            }
 
             // The packaged app ships a custom jlink-trimmed JDK runtime (createRuntimeImage),
             // built from whatever modules static analysis detects the app needs - confirmed by

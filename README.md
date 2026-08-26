@@ -39,7 +39,7 @@ packaging step involved, the quickest way to iterate.
 
 | Target | Command | Extra build-machine prerequisites |
 | --- | --- | --- |
-| Windows `.msi` | `.\gradlew.bat :desktopApp:packageReleaseMsi` | [7-Zip](https://www.7-zip.org/) (`7z` on PATH) - used to fetch and unpack the bundled `mpv` build; the [WiX Toolset](https://wixtoolset.org/), which `jpackage` itself needs to produce an `.msi` |
+| Windows `.msi` | `.\gradlew.bat :desktopApp:packageReleaseMsi` | [7-Zip](https://www.7-zip.org/) (`7z` on PATH) - used to fetch and unpack the bundled `mpv` build |
 | Linux `.deb` | `./gradlew :desktopApp:packageReleaseDeb :desktopApp:addMpvDependencyToDeb` | `dpkg-deb`/`fakeroot` (e.g. `sudo apt install dpkg-dev fakeroot`, or `sudo pacman -S dpkg fakeroot` on non-Debian distros) |
 | Linux `.AppImage`-style app-image | `./gradlew :desktopApp:packageReleaseAppImage` | - |
 | Android (debug) | `./gradlew :androidApp:assembleDebug` | - |
