@@ -42,7 +42,7 @@ import xyz.skifty.mani.ui.screens.nowplaying.components.NowPlayingTitleRow
 
 // How far up (as a fraction of the screen's own height) a drag needs to go before it counts as a
 // deliberate swipe-to-navigate rather than a small/accidental movement that should snap back.
-private const val SWIPE_UP_THRESHOLD_FRACTION = 0.25f
+private const val SWIPE_UP_THRESHOLD_FRACTION = 0.12f
 
 // Shared by the title row and the progress bar below - AlbumArt applies this same value itself
 // (see its own padding), so all three line up on the same edges instead of the progress bar
