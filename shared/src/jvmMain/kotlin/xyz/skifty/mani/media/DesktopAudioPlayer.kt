@@ -177,7 +177,11 @@ class DesktopAudioPlayer : AudioPlayer {
         // scales a seek against whatever length() currently returns, so a seek issued in that gap
         // would land at completely the wrong position (wrong track's length, right fraction).
         cachedDurationMs = 0L
-        mpv.sendCommand("loadfile", songInfo.songPlaybackUrl ?: "", "replace")
+        // mpv's pause property is sticky across loadfile - without forcing pause=no here as a
+        // load-time option (mirroring prepare()'s pause=yes below), skipping to a new track while
+        // paused would leave mpv still paused even though isPlaying is set to true just below,
+        // silently desyncing the UI from actual playback until a manual pause/resume round-trip.
+        mpv.sendCommand("loadfile", songInfo.songPlaybackUrl ?: "", "replace", -1, "pause=no")
         activeSongInfo.setSong(songInfo)
         setIsPlaying(true)
     }

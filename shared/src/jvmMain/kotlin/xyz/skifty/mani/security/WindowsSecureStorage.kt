@@ -4,8 +4,8 @@ import xyz.skifty.mani.security.SecureStorage
 import java.io.File
 
 class WindowsSecureStorage : SecureStorage {
-    override fun save(key: String, secret: String) {
-        val encrypted = DPAPI.protect(secret.toByteArray(Charsets.UTF_8))
+    override fun save(key: String, value: String) {
+        val encrypted = DPAPI.protect(value.toByteArray(Charsets.UTF_8))
         File("${System.getProperty("user.home")}/.secure/$key").apply {
             parentFile.mkdirs()
             writeBytes(encrypted)

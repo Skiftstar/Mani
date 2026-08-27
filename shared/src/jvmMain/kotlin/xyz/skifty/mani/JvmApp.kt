@@ -28,7 +28,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
-import org.jetbrains.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.Preview
 import xyz.skifty.mani.ext.toLocale
 import xyz.skifty.mani.i18n.AppLanguage
 import java.util.Locale

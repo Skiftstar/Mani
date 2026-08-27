@@ -56,6 +56,11 @@ compose.desktop {
     application {
         mainClass = "xyz.skifty.mani.MainKt"
 
+        // Silences the JDK's "restricted method in java.lang.System has been called" warning
+        // logged on every run - Skiko loads its native library via System.load, which newer JDKs
+        // flag unless native access is explicitly granted to the unnamed module it runs in.
+        jvmArgs += listOf("--enable-native-access=ALL-UNNAMED")
+
         // ProGuard shrinking broke real Windows/Linux installs at runtime - confirmed by hand:
         // ktor-client-cio's engine is only ever loaded reflectively (via ServiceLoader, reading a
         // META-INF/services entry naming the class - nothing in this codebase references
