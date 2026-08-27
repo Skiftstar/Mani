@@ -102,7 +102,9 @@ fun AndroidApp() {
                                 ),
                             )
                         }
-                        AnimatedVisibility(visible = screen != Screen.NowPlaying) {
+                        AnimatedVisibility(
+                            visible = screen != null && screen != Screen.Login && screen != Screen.NowPlaying,
+                        ) {
                             BottomNavBar(
                                 selected = screen ?: Screen.Home,
                                 onSelect = { target -> appShellState.navigate(target) },
@@ -139,7 +141,9 @@ fun AndroidApp() {
                             },
                         )
 
-                        Screen.Profile -> ProfileScreen()
+                        Screen.Profile -> ProfileScreen(
+                            onLogout = { appShellState.logout() },
+                        )
 
                         is Screen.Playlist -> PlaylistScreen(
                             apiService = apiService,

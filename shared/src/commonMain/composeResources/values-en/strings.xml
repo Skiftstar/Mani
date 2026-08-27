@@ -1,0 +1,7 @@
+<resources>
+    <!-- Login screen -->
+    <string name="login_title">Log In</string>
+
+    <!-- Profile screen (Android) -->
+    <string name="profile_logout_button">Log Out</string>
+</resources>

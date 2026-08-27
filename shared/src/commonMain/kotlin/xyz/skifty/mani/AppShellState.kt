@@ -46,6 +46,25 @@ class AppShellState(
         screen = target
     }
 
+    /** Clears the current session, both in-memory ([ApiService]) and persisted ([SecureStorage]),
+     *  and returns to the login screen - the inverse of [rememberAppShellState]'s startup session
+     *  restore. Storage deletion failures (e.g. no system keyring reachable) shouldn't block
+     *  logging out - the in-memory session is cleared and the user is sent to Login regardless.
+     *  Also stops playback and clears [activeSongInfo] - otherwise the mini-player/now-playing
+     *  chrome (gated on activeSongInfo.songId != null) would keep showing over the login screen,
+     *  still playing audio for whoever's about to log in next. */
+    fun logout() {
+        audioPlayer.stop(activeSongInfo)
+        apiService.clearSession()
+        runCatching {
+            secureStorage.delete("mani_api_url")
+            secureStorage.delete("mani_username")
+            secureStorage.delete("mani_token")
+            secureStorage.delete("mani_salt")
+        }
+        navigate(Screen.Login)
+    }
+
 }
 
 /** Builds an [AppShellState] and runs its side effects - session restore, last-song/volume
