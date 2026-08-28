@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -145,25 +147,37 @@ fun AndroidApp() {
                             onLogout = { appShellState.logout() },
                         )
 
-                        is Screen.Playlist -> PlaylistScreen(
-                            apiService = apiService,
-                            audioPlayer = audioPlayer,
-                            activeSongInfo = activeSongInfo,
-                            playbackQueue = playbackQueue,
-                            playlistLibrary = playlistLibrary,
-                            playlistId = currentScreen.playlistId,
-                            playlistName = currentScreen.playlistName,
-                        )
+                        is Screen.Playlist -> Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState()),
+                        ) {
+                            PlaylistScreen(
+                                apiService = apiService,
+                                audioPlayer = audioPlayer,
+                                activeSongInfo = activeSongInfo,
+                                playbackQueue = playbackQueue,
+                                playlistLibrary = playlistLibrary,
+                                playlistId = currentScreen.playlistId,
+                                playlistName = currentScreen.playlistName,
+                            )
+                        }
 
-                        Screen.LikedSongs -> PlaylistScreen(
-                            apiService = apiService,
-                            audioPlayer = audioPlayer,
-                            activeSongInfo = activeSongInfo,
-                            playbackQueue = playbackQueue,
-                            playlistLibrary = playlistLibrary,
-                            playlistId = null,
-                            playlistName = stringResource(Res.string.playlist_liked_songs_title),
-                        )
+                        Screen.LikedSongs -> Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState()),
+                        ) {
+                            PlaylistScreen(
+                                apiService = apiService,
+                                audioPlayer = audioPlayer,
+                                activeSongInfo = activeSongInfo,
+                                playbackQueue = playbackQueue,
+                                playlistLibrary = playlistLibrary,
+                                playlistId = null,
+                                playlistName = stringResource(Res.string.playlist_liked_songs_title),
+                            )
+                        }
 
                         Screen.Search -> AndroidSearchScreen(
                             apiService = apiService,

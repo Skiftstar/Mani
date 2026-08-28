@@ -98,17 +98,30 @@ compose.desktop {
                 upgradeUuid = "25c62f15-4c9a-4f5f-9190-08d6cc8f8972"
             }
 
-            // The packaged app ships a custom jlink-trimmed JDK runtime (createRuntimeImage),
-            // built from whatever modules static analysis detects the app needs - confirmed by
-            // hand to miss jdk.security.auth (com.sun.security.auth.module.UnixSystem), which
-            // dbus-java's SASL authentication only reaches reflectively, breaking MPRIS silently
-            // in the packaged build despite working fine under a plain `./gradlew run` (full JDK,
-            // every module present). Same reasoning as disabling ProGuard above: a narrow
-            // `modules("jdk.security.auth")` fix would only address today's specific symptom, not
-            // whatever else jna/dbus-java might reach reflectively elsewhere and hasn't surfaced
-            // yet - full JDK modules trades runtime size for not chasing this class of bug one
-            // missing module at a time.
-            includeAllModules = true
+            // The packaged app ships a custom jlink-trimmed JDK runtime (createRuntimeImage).
+            // includeAllModules=true was tried first (full JDK, ~150MB, no jdeps guesswork) after
+            // jdk.security.auth (com.sun.security.auth.module.UnixSystem) turned up missing from
+            // plain automatic detection - dbus-java's SASL authentication only reaches it
+            // reflectively, breaking MPRIS/the Linux keyring integration silently in a packaged
+            // build despite working fine under a plain `./gradlew run` (full JDK, every module
+            // present). Going back to an explicit list instead (~70MB automatic baseline + that
+            // one confirmed reflective gap) rather than the full set - if another reflective gap
+            // like this surfaces later (jna/dbus-java/slf4j are all candidates, per the identical
+            // reflection pattern noted in the ProGuard comment above), add the specific missing
+            // module here by hand rather than reaching back for includeAllModules=true.
+            modules(
+                // Automatic detection's own result (confirmed by hand: this exact set is what
+                // jdeps-based analysis produces with includeAllModules left off) - kept explicit
+                // rather than just omitting `modules(...)` entirely, so this list stays the
+                // single source of truth for every module this app needs, confirmed ones and
+                // automatically-detected ones alike.
+                "java.base",
+                "java.desktop",
+                "java.logging",
+                "jdk.crypto.ec",
+                // Confirmed-by-hand reflective gap - see the comment above.
+                "jdk.security.auth",
+            )
 
             // Bundled per-OS extra files - only resources/windows/ is populated (mpv.exe +
             // d3dcompiler_43.dll, fetched at build time by downloadMpvForWindows below rather than

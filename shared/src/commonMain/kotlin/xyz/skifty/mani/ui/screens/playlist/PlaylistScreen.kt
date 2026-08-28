@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -68,15 +66,14 @@ fun PlaylistScreen(
         }
     } else {
         Column(
+            // Deliberately not self-scrolling here - desktop's JvmApp.kt already wraps every
+            // screen in one shared verticalScroll Column, and nesting a second vertically
+            // scrollable container directly inside that one isn't harmless: it hits Compose's
+            // "measured with infinity maximum height constraints" check and crashes. Callers
+            // that render this screen with no outer scroll container of their own (Android's
+            // AndroidApp.kt) are responsible for supplying one themselves.
             modifier = Modifier
                 .fillMaxWidth()
-                // Self-scrolling, rather than relying on an outer scroll container - Android's
-                // Scaffold-based routing (AndroidApp.kt) renders this screen directly with no such
-                // wrapper, unlike desktop's JvmApp.kt, which already wraps every screen in one
-                // shared verticalScroll Column - nesting this inside that one is harmless (it just
-                // never has anything of its own left to scroll, since the outer one already gives
-                // it unbounded height).
-                .verticalScroll(rememberScrollState())
                 .padding(vertical = 24.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {

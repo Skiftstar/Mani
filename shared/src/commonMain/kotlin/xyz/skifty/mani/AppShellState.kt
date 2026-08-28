@@ -127,7 +127,12 @@ fun rememberAppShellState(): AppShellState {
             // unreachable server here shouldn't block startup either.
             runCatching {
                 appPreferences.get("mani_last_song_id")?.let { lastSongId ->
-                    audioPlayer.prepare(apiService.getSong(lastSongId), activeSongInfo)
+                    val song = apiService.getSong(lastSongId)
+                    audioPlayer.prepare(song, activeSongInfo)
+                    // Also seeds playbackQueue, not just audioPlayer - otherwise the queue stays
+                    // empty until the user separately opens a playlist, and next/previous/loop-one
+                    // silently do nothing the moment this restored song is resumed and finishes.
+                    playbackQueue.prepareSingle(song)
                 }
             }
         }

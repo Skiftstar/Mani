@@ -67,6 +67,21 @@ class PlaybackQueue(
         playCurrent()
     }
 
+    /** Seeds the queue with a single already-loaded song without starting playback - the queue's
+     *  analog of [AudioPlayer.prepare], for the one caller (restoring the last-played song as
+     *  paused on startup) that loads a song directly through [AudioPlayer] rather than through
+     *  [start]. Without this, the queue stays empty until the user separately opens a playlist and
+     *  picks a song, so [next]/[previous]/[onTrackFinished] (loop-one in particular) silently do
+     *  nothing the moment that restored song is resumed and finishes - confirmed by hand: this was
+     *  the actual cause of a "loop-one just stops instead of replaying" report, not an
+     *  [AudioPlayer]/mpv issue as it first appeared. */
+    fun prepareSingle(song: SongInfo) {
+        songs = listOf(song)
+        currentSourceId = null
+        playOrder = listOf(0)
+        currentPosition = 0
+    }
+
     /** Appends [song] to the end of the current queue without interrupting playback. If nothing's
      *  queued yet, there's nothing to append to - starts a fresh single-song queue instead, same
      *  as [start] would for a plain "play this song now". */

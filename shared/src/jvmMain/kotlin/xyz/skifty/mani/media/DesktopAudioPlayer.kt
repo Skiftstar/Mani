@@ -177,11 +177,17 @@ class DesktopAudioPlayer : AudioPlayer {
         // scales a seek against whatever length() currently returns, so a seek issued in that gap
         // would land at completely the wrong position (wrong track's length, right fraction).
         cachedDurationMs = 0L
-        // mpv's pause property is sticky across loadfile - without forcing pause=no here as a
-        // load-time option (mirroring prepare()'s pause=yes below), skipping to a new track while
-        // paused would leave mpv still paused even though isPlaying is set to true just below,
-        // silently desyncing the UI from actual playback until a manual pause/resume round-trip.
-        mpv.sendCommand("loadfile", songInfo.songPlaybackUrl ?: "", "replace", -1, "pause=no")
+        mpv.sendCommand("loadfile", songInfo.songPlaybackUrl ?: "", "replace")
+        // mpv's pause property is sticky across loadfile - without forcing it off here, skipping
+        // to a new track while paused would leave mpv still paused even though isPlaying is set
+        // to true just below, silently desyncing the UI from actual playback until a manual
+        // pause/resume round-trip. A trailing set_property, not a "pause=no" loadfile load-time
+        // option (tried first) - that broke LoopMode.ONE specifically: replaying the *same* file
+        // immediately off the back of its own natural end-of-file races mpv's EOF-to-idle
+        // transition when the pause override rides along in the same loadfile command, silently
+        // dropping the reload. prepare()'s own "pause=yes" load-time option below never hits this
+        // - it only ever runs once at startup, never immediately after an end-file event.
+        mpv.sendCommand("set_property", "pause", false)
         activeSongInfo.setSong(songInfo)
         setIsPlaying(true)
     }
@@ -195,12 +201,17 @@ class DesktopAudioPlayer : AudioPlayer {
         pendingIsPlaying = false
         cachedPositionMs = 0L
         cachedDurationMs = 0L
-        // The third positional argument (playlist insertion index) must be explicitly -1 for the
-        // fourth (per-file options) to be honored, since mpv 0.38.0 - see the loadfile docs.
-        // Setting pause=yes here as a load-time option, rather than a follow-up set_property
-        // command, avoids a race where playback could briefly start before a separate pause call
-        // lands.
-        mpv.sendCommand("loadfile", songInfo.songPlaybackUrl ?: "", "replace", -1, "pause=yes")
+        mpv.sendCommand("loadfile", songInfo.songPlaybackUrl ?: "", "replace")
+        // Explicit follow-up command, not a "pause=yes" loadfile load-time option (tried first) -
+        // that option's application races the file's own asynchronous open on a real network
+        // stream: it can still land *after* an immediate resume() has already unpaused mpv,
+        // silently re-pausing the reported "pause" property (and, through this class's "pause"
+        // property observer, isPlaying) a moment later even though playback itself keeps running
+        // underneath - confirmed by hand, the exact same race class as play()'s own loadfile fix
+        // above, just for the opposite pause value. Sequencing this as a separate command instead
+        // - always issued immediately after loadfile, well before any real network stream can
+        // finish opening - avoids it.
+        mpv.sendCommand("set_property", "pause", true)
         activeSongInfo.setSong(songInfo)
         setIsPlaying(false)
     }
@@ -217,6 +228,15 @@ class DesktopAudioPlayer : AudioPlayer {
     override fun resume() {
         if (!isPlaying) {
             mpv.sendCommand("set_property", "pause", false)
+            // Also keeps pendingIsPlaying in sync, not just isPlaying directly - without this, a
+            // resume() landing in the window between prepare()/play() issuing a fresh loadfile and
+            // mpv's own "file-loaded" event actually confirming it (routinely ~300-500ms for a
+            // real network stream) would leave prepare()'s pendingIsPlaying=false lying around
+            // stale; once file-loaded does fire, its handler below blindly reasserts that stale
+            // value, silently pausing the *reported* state again (isPlaying flips back to false)
+            // even though mpv's actual playback - confirmed by hand, its own "pause" property -
+            // never stopped. Same fix shape for pauseOnly() below.
+            pendingIsPlaying = true
             setIsPlaying(true)
         }
     }
@@ -225,6 +245,7 @@ class DesktopAudioPlayer : AudioPlayer {
     override fun pauseOnly() {
         if (isPlaying) {
             mpv.sendCommand("set_property", "pause", true)
+            pendingIsPlaying = false
             setIsPlaying(false)
         }
     }
