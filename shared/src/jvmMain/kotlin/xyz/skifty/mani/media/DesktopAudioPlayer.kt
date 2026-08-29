@@ -31,6 +31,11 @@ class DesktopAudioPlayer : AudioPlayer {
     override var trackFinishedCount: Int by mutableStateOf(0)
         private set
 
+    // See AudioPlayer.hasReachedEnd - set on the same "eof" end-file event as trackFinishedCount
+    // above, cleared the moment a fresh loadfile goes out in play()/prepare().
+    override var hasReachedEnd: Boolean by mutableStateOf(false)
+        private set
+
     // Bumped whenever mpv *confirms* playback has genuinely (re)started - a fresh play, a resume,
     // or a skip straight from one playing track to another. Deliberately not the same thing as
     // isPlaying: going from "playing track A" to "playing track B" never actually flips isPlaying's
@@ -113,6 +118,7 @@ class DesktopAudioPlayer : AudioPlayer {
             setIsPlaying(false)
             if (message.reason == "eof") {
                 trackFinishedCount++
+                hasReachedEnd = true
             }
         }
     }
@@ -166,6 +172,7 @@ class DesktopAudioPlayer : AudioPlayer {
     override fun play(songInfo: SongInfo, activeSongInfo: SongInfo) {
         captureTrackLeft(activeSongInfo)
         resetListenTracking()
+        hasReachedEnd = false
         pendingStartPositionMs = 0L
         pendingIsPlaying = true
         // A fresh loadfile always starts at 0 - clear the cache immediately rather than waiting
@@ -197,6 +204,7 @@ class DesktopAudioPlayer : AudioPlayer {
     override fun prepare(songInfo: SongInfo, activeSongInfo: SongInfo) {
         captureTrackLeft(activeSongInfo)
         resetListenTracking()
+        hasReachedEnd = false
         pendingStartPositionMs = 0L
         pendingIsPlaying = false
         cachedPositionMs = 0L

@@ -41,6 +41,7 @@ import mani.shared.generated.resources.cd_maximize_window
 import mani.shared.generated.resources.cd_minimize_window
 import mani.shared.generated.resources.cd_restore_window
 import org.jetbrains.compose.resources.stringResource
+import xyz.skifty.mani.ui.theme.SpotifyBottomBarBackground
 
 private val TITLE_BAR_HEIGHT = 36.dp
 private val TITLE_BAR_BUTTON_SIZE = 36.dp
@@ -51,10 +52,12 @@ private val TITLE_BAR_ICON_SIZE = 16.dp
  *  [WindowDraggableArea] (the standard mechanism for undecorated windows, e.g. Discord/Spotify's
  *  own title bars) makes the whole bar draggable to move the window; the three buttons on the
  *  right drive [windowState] directly (minimize, toggle maximize) or call [onCloseClick]. Painted
- *  the same color as the rest of the app's background, with a divider marking where it ends -
- *  requires a [xyz.skifty.mani.ui.theme.ManiTheme] ancestor to pick up that color
- *  correctly, same as everything JvmApp renders (main() wraps this call in one itself, since this
- *  composes outside JvmApp's own).
+ *  the same [SpotifyBottomBarBackground] tone as NowPlayingBottomWidget - a shade darker than the
+ *  rest of the app's background - so it reads as a distinct surface bracketing the window at both
+ *  top and bottom, with a divider marking where it ends. Requires a
+ *  [xyz.skifty.mani.ui.theme.ManiTheme] ancestor to pick up the theme's other colors (text,
+ *  divider) correctly, same as everything JvmApp renders (main() wraps this call in one itself,
+ *  since this composes outside JvmApp's own).
  *
  *  Deliberately doesn't attempt edge-drag resizing or Aero Snap - undecorated windows lose both,
  *  and reimplementing them needs lower-level platform hooks outside Compose Desktop's own API. */
@@ -71,7 +74,7 @@ fun WindowScope.TitleBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(TITLE_BAR_HEIGHT)
-                .background(MaterialTheme.colorScheme.background),
+                .background(SpotifyBottomBarBackground),
         ) {
             Row(
                 modifier = Modifier

@@ -1,11 +1,14 @@
 package xyz.skifty.mani.ui.theme
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 
 // Explicitly setting the surface-adjacent roles below rather than letting Material3 auto-derive
 // them from `surface` - its Material You tonal algorithm deliberately spaces those roles apart
@@ -46,7 +49,21 @@ fun ManiTheme(
                 modifier = Modifier.fillMaxSize(),
                 color = MaterialTheme.colorScheme.background,
             ) {
-                content()
+                // A really slight vertical gradient over Surface's own flat background, rather
+                // than replacing it outright - fades back down to plain SpotifyBackground by the
+                // bottom of the window, so it still meshes with the flat SpotifyBackground/
+                // surfaceContainer-toned Sidebar/NowPlayingPanel/etc. it sits alongside.
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(SpotifyBackgroundGradientTop, SpotifyBackground),
+                            ),
+                        ),
+                ) {
+                    content()
+                }
             }
         } else {
             content()

@@ -12,6 +12,13 @@ interface AudioPlayer {
     val volume: Int
     val seekCount: Int
     val trackFinishedCount: Int
+
+    // True once the currently-loaded track has played through to a natural end and stays true
+    // until the next play()/prepare() loads something fresh - lets callers (PlaybackQueue.resume()
+    // in particular) tell "paused mid-track" apart from "already finished" - resume()/
+    // togglePlayPause() alone can't restart a track that's already reached its end, since there's
+    // nothing left running to unpause.
+    val hasReachedEnd: Boolean
     val playbackStartedCount: Int
     val lastConfirmedStartPositionMs: Long
     val lastTrackLeft: TrackLeftEvent?

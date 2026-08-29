@@ -78,7 +78,7 @@ class MprisService(
     }
 
     override fun PlayPause() {
-        audioPlayer.togglePlayPause()
+        playbackQueue.togglePlayPause()
     }
 
     override fun Stop() {
@@ -86,7 +86,7 @@ class MprisService(
     }
 
     override fun Play() {
-        audioPlayer.resume()
+        playbackQueue.resume()
     }
 
     override fun Seek(offsetMicroseconds: Long) {

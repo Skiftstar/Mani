@@ -12,7 +12,6 @@ import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -37,6 +36,7 @@ import xyz.skifty.mani.ui.components.nowplaying.components.PlaybackButtons
 import xyz.skifty.mani.ui.components.nowplaying.components.ProgressSlider
 import xyz.skifty.mani.ui.components.nowplaying.components.TrackInfo
 import xyz.skifty.mani.ui.components.nowplaying.components.VolumeControl
+import xyz.skifty.mani.ui.theme.SpotifyBottomBarBackground
 
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -92,8 +92,13 @@ fun NowPlayingBottomWidget(audioPlayer: AudioPlayer, activeSongInfo: SongInfo, p
     // own bounds, which would cut off the top of ProgressSlider's hover thumb (it intentionally
     // overflows slightly above its own top edge to stay centered on a track that sits flush at
     // this widget's top edge, with zero gap above it).
+    //
+    // SpotifyBottomBarBackground rather than MaterialTheme.colorScheme.surfaceContainer - that
+    // token is deliberately the exact same value as the main background elsewhere (Sidebar,
+    // NowPlayingPanel), so using it here too would make this bar blend invisibly into the content
+    // above it instead of reading as its own distinct surface.
     Column(
-        modifier = Modifier.background(MaterialTheme.colorScheme.surfaceContainer),
+        modifier = Modifier.background(SpotifyBottomBarBackground),
     ) {
         ProgressSlider(
             audioPlayer = audioPlayer,

@@ -70,7 +70,7 @@ fun PlaybackButtons(
             )
         }
 
-        IconButton(onClick = { audioPlayer.togglePlayPause() }) {
+        IconButton(onClick = { playbackQueue.togglePlayPause() }) {
             Icon(
                 imageVector = if (audioPlayer.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                 contentDescription = stringResource(

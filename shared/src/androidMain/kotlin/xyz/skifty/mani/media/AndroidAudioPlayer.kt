@@ -45,6 +45,11 @@ class AndroidAudioPlayer(private val context: Context) : AudioPlayer {
     override var trackFinishedCount: Int by mutableStateOf(0)
         private set
 
+    // See AudioPlayer.hasReachedEnd - set on the same STATE_ENDED transition as trackFinishedCount
+    // above, cleared the moment a fresh play()/prepare() sets a new media item.
+    override var hasReachedEnd: Boolean by mutableStateOf(false)
+        private set
+
     override var playbackStartedCount: Int by mutableStateOf(0)
         private set
 
@@ -131,6 +136,7 @@ class AndroidAudioPlayer(private val context: Context) : AudioPlayer {
     override fun play(songInfo: SongInfo, activeSongInfo: SongInfo) {
         captureTrackLeft(activeSongInfo)
         resetListenTracking()
+        hasReachedEnd = false
         activeSongInfo.setSong(songInfo)
         controller?.apply {
             setMediaItem(mediaItemFor(songInfo))
@@ -145,6 +151,7 @@ class AndroidAudioPlayer(private val context: Context) : AudioPlayer {
     override fun prepare(songInfo: SongInfo, activeSongInfo: SongInfo) {
         captureTrackLeft(activeSongInfo)
         resetListenTracking()
+        hasReachedEnd = false
         activeSongInfo.setSong(songInfo)
         controller?.apply {
             setMediaItem(mediaItemFor(songInfo))
@@ -216,6 +223,7 @@ class AndroidAudioPlayer(private val context: Context) : AudioPlayer {
         override fun onPlaybackStateChanged(playbackState: Int) {
             if (playbackState == Player.STATE_ENDED) {
                 trackFinishedCount++
+                hasReachedEnd = true
             }
         }
 

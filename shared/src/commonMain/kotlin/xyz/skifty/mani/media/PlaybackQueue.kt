@@ -183,6 +183,32 @@ class PlaybackQueue(
         }
     }
 
+    /** [AudioPlayer.resume]'s queue-aware counterpart - if [audioPlayer] already played the
+     *  current track through to its end ([AudioPlayer.hasReachedEnd]), restarts it from the
+     *  beginning instead of trying to resume something that's already finished playing, which
+     *  resume() alone can't do (there's nothing left running to unpause) - this is what was
+     *  leaving playback stuck "playing" at the very end of the track after pressing play again
+     *  with nothing next queued. A no-op if already playing, same as [AudioPlayer.resume]. */
+    fun resume() {
+        if (audioPlayer.isPlaying) {
+            return
+        }
+        if (audioPlayer.hasReachedEnd) {
+            playCurrent()
+        } else {
+            audioPlayer.resume()
+        }
+    }
+
+    /** [AudioPlayer.togglePlayPause]'s queue-aware counterpart - see [resume]. */
+    fun togglePlayPause() {
+        if (audioPlayer.isPlaying) {
+            audioPlayer.pauseOnly()
+        } else {
+            resume()
+        }
+    }
+
     private fun playCurrent() {
         val songIndex = playOrder.getOrNull(currentPosition)
             ?: return

@@ -7,6 +7,16 @@ val SpotifyBackground = Color(0xFF0B0E14)
 val SpotifySurfaceVariant = Color(0xFF1C212C)
 val SpotifyOutlineVariant = Color(0xFF2A2F3A)
 
+// The very top of ManiTheme's main-background gradient - a touch lighter than SpotifyBackground,
+// which the gradient fades back down to by the bottom of the window, so it still meshes seamlessly
+// with the flat SpotifyBackground-toned Sidebar/NowPlayingPanel/etc. around and below it.
+val SpotifyBackgroundGradientTop = Color(0xFF10141F)
+
+// NowPlayingBottomWidget's own background - a shade darker than SpotifyBackground so the bar
+// reads as a distinct surface instead of blending into the (surfaceContainer-toned) Sidebar/
+// content behind it, which deliberately shares SpotifyBackground's exact value - see Theme.kt.
+val SpotifyBottomBarBackground = Color(0xFF070A10)
+
 // Text.
 val SpotifyOnBackground = Color(0xFFFFFFFF)
 val SpotifyOnSurfaceVariant = Color(0xFFA7A7A7)

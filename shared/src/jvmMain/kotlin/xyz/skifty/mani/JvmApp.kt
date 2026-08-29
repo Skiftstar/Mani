@@ -251,7 +251,7 @@ fun JvmApp() {
                                 KeyEventType.KeyDown -> {
                                     if (!isSpaceKeyDown) {
                                         isSpaceKeyDown = true
-                                        audioPlayer.togglePlayPause()
+                                        playbackQueue.togglePlayPause()
                                     }
                                     true
                                 }
