@@ -29,6 +29,9 @@ class SongInfo {
     var songFormat by mutableStateOf<String?>(null)
         private set
 
+    var songPlayCount by mutableStateOf<Int?>(null)
+        private set
+
     var starred by mutableStateOf(false)
 
     fun setSong(
@@ -40,6 +43,7 @@ class SongInfo {
         durationSeconds: Int?,
         bitRateKbps: Int?,
         format: String?,
+        playCount: Int?,
         starred: Boolean,
     ) {
         songId = id
@@ -50,6 +54,7 @@ class SongInfo {
         songDurationSeconds = durationSeconds
         songBitRateKbps = bitRateKbps
         songFormat = format
+        songPlayCount = playCount
         this.starred = starred
     }
 
@@ -62,6 +67,7 @@ class SongInfo {
         songDurationSeconds = songInfo.songDurationSeconds
         songBitRateKbps = songInfo.songBitRateKbps
         songFormat = songInfo.songFormat
+        songPlayCount = songInfo.songPlayCount
         starred = songInfo.starred
     }
 
@@ -74,6 +80,7 @@ class SongInfo {
         songDurationSeconds = null
         songBitRateKbps = null
         songFormat = null
+        songPlayCount = null
         starred = false
     }
 }

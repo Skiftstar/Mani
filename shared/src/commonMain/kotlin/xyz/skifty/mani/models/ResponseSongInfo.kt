@@ -13,4 +13,5 @@ data class ResponseSongInfo(
     val bitRate: Int? = null,
     val suffix: String? = null,
     val starred: String? = null,
+    val playCount: Int? = null,
 )

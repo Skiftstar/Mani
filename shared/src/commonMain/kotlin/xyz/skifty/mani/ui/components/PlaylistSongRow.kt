@@ -51,6 +51,7 @@ import mani.shared.generated.resources.unknown_title
 import org.jetbrains.compose.resources.stringResource
 import xyz.skifty.mani.api.ApiService
 import xyz.skifty.mani.ext.detectSecondaryClick
+import xyz.skifty.mani.ext.qualityLabel
 import xyz.skifty.mani.ext.toDurationLabel
 import xyz.skifty.mani.media.AudioPlayer
 import xyz.skifty.mani.media.PlaylistInfo
@@ -176,7 +177,7 @@ fun PlaylistSongRow(
 
             if (showExtendedSongColumns) {
                 Text(
-                    text = qualityLabel(songInfo),
+                    text = songInfo.qualityLabel(),
                     style = MaterialTheme.typography.bodyMedium,
                     color = secondaryColor,
                     modifier = Modifier.width(80.dp),
@@ -221,11 +222,4 @@ fun PlaylistSongRow(
             onRemoveFromPlaylist = onRemoveFromPlaylist,
         )
     }
-}
-
-private fun qualityLabel(songInfo: SongInfo): String {
-    songInfo.songBitRateKbps?.let { bitRateKbps ->
-        return "$bitRateKbps kbps"
-    }
-    return songInfo.songFormat?.uppercase() ?: "--"
 }

@@ -47,6 +47,22 @@ class PlaybackQueue(
     val hasPrevious: Boolean
         get() = songs.isNotEmpty() && (loopMode == LoopMode.ALL || currentPosition > 0)
 
+    /** The song [next] would skip to, without actually skipping - null if nothing's queued after
+     *  the current position (mirrors [next]'s own wrap-on-[LoopMode.ALL] rule), for UI that wants
+     *  to preview what's coming up (e.g. a "Next in Queue" panel). */
+    val nextSong: SongInfo?
+        get() {
+            val nextPosition = currentPosition + 1
+            val position = when {
+                nextPosition <= playOrder.lastIndex -> nextPosition
+                loopMode == LoopMode.ALL -> 0
+                else -> return null
+            }
+            val songIndex = playOrder.getOrNull(position)
+                ?: return null
+            return songs.getOrNull(songIndex)
+        }
+
     /** Replaces the queue with [newSongs] (sourced from [sourceId] - a playlist id, or null for
      *  Liked Songs, matching PlaylistScreen's own convention) and starts playing [startIndex] -
      *  songs before it stay reachable via [previous], songs after via [next] (or, if shuffle is

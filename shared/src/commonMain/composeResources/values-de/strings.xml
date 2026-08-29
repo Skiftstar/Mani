@@ -58,6 +58,11 @@
     <string name="cd_queue">Warteschlange</string>
     <string name="cd_fullscreen">Vollbild</string>
 
+    <!-- Now playing panel -->
+    <string name="now_playing_panel_title">Wird wiedergegeben</string>
+    <string name="now_playing_panel_plays_count">%1$d Wiedergaben</string>
+    <string name="now_playing_panel_next_in_queue">Als Nächstes in der Warteschlange</string>
+
     <!-- Search -->
     <string name="search_placeholder">Songs suchen</string>
     <string name="cd_search">Suche</string>

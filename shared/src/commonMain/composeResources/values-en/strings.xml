@@ -4,4 +4,9 @@
 
     <!-- Profile screen (Android) -->
     <string name="profile_logout_button">Log Out</string>
+
+    <!-- Now playing panel -->
+    <string name="now_playing_panel_title">Now Playing</string>
+    <string name="now_playing_panel_plays_count">%1$d plays</string>
+    <string name="now_playing_panel_next_in_queue">Next in Queue</string>
 </resources>

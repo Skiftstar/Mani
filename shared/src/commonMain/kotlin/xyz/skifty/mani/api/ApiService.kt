@@ -94,6 +94,7 @@ class ApiService {
             durationSeconds = responseSongInfo.duration,
             bitRateKbps = responseSongInfo.bitRate,
             format = responseSongInfo.suffix,
+            playCount = responseSongInfo.playCount,
             starred = responseSongInfo.starred != null,
         )
         return songInfo

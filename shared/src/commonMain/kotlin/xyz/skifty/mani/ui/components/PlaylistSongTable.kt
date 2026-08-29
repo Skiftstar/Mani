@@ -26,19 +26,20 @@ import mani.shared.generated.resources.playlist_column_quality
 import mani.shared.generated.resources.playlist_column_title
 import org.jetbrains.compose.resources.stringResource
 import xyz.skifty.mani.api.ApiService
+import xyz.skifty.mani.ext.toggleStar
 import xyz.skifty.mani.media.AudioPlayer
 import xyz.skifty.mani.media.PlaybackQueue
 import xyz.skifty.mani.media.PlaylistInfo
 import xyz.skifty.mani.media.PlaylistLibrary
 import xyz.skifty.mani.media.SongInfo
 
-/** Column headers followed by one [PlaylistSongRow] per song. Owns the star/unstar toggle
- *  (calling [apiService] and optimistically flipping [SongInfo.starred], reverting it if the
- *  request fails) so every screen using this table gets identical behavior for free - likewise
- *  for each row's context-menu actions (Play/Add to Queue/Add to Playlist), all constructed here
- *  from [playbackQueue]/[apiService] rather than threading those services into [PlaylistSongRow]
- *  itself. [onRemoveFromPlaylist] is left null by screens where it doesn't apply (Liked Songs,
- *  search results) - [PlaylistSongRow] hides that menu item entirely when it's null. */
+/** Column headers followed by one [PlaylistSongRow] per song. Wires up the star/unstar toggle
+ *  (via [ApiService.toggleStar]) so every screen using this table gets identical behavior for
+ *  free - likewise for each row's context-menu actions (Play/Add to Queue/Add to Playlist), all
+ *  constructed here from [playbackQueue]/[apiService] rather than threading those services into
+ *  [PlaylistSongRow] itself. [onRemoveFromPlaylist] is left null by screens where it doesn't apply
+ *  (Liked Songs, search results) - [PlaylistSongRow] hides that menu item entirely when it's
+ *  null. */
 @Composable
 fun PlaylistSongTable(
     songs: List<SongInfo>,
@@ -54,24 +55,8 @@ fun PlaylistSongTable(
     val coroutineScope = rememberCoroutineScope()
 
     fun toggleStar(songInfo: SongInfo) {
-        val songId = songInfo.songId
-            ?: return
-        val wasStarred = songInfo.starred
-        songInfo.starred = !wasStarred
         coroutineScope.launch {
-            val result = if (wasStarred) {
-                apiService.unstar(songId)
-            } else {
-                apiService.star(songId)
-            }
-            if (result.isFailure) {
-                songInfo.starred = wasStarred
-            } else {
-                // Liked Songs is itself a pseudo-playlist - starring/unstarring changes its
-                // membership the same way adding/removing a song from a real playlist does, so
-                // playlistLibrary's cache needs the same invalidation.
-                playlistLibrary.refreshPlaylists(apiService)
-            }
+            apiService.toggleStar(songInfo, playlistLibrary)
         }
     }
 

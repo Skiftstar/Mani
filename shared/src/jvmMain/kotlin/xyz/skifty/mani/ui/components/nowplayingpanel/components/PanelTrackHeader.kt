@@ -1,4 +1,4 @@
-package xyz.skifty.mani.ui.screens.nowplaying.components
+package xyz.skifty.mani.ui.components.nowplayingpanel.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -28,27 +28,26 @@ import xyz.skifty.mani.ext.toggleStar
 import xyz.skifty.mani.media.PlaylistLibrary
 import xyz.skifty.mani.media.SongInfo
 
-/** Title + artist (stacked), with a like toggle to the right, vertically centered against both
- *  lines together rather than either one alone. */
+/** Title + artist (stacked), with a like toggle to the right - the desktop panel's equivalent of
+ *  Android's NowPlayingTitleRow. */
 @Composable
-fun NowPlayingTitleRow(activeSongInfo: SongInfo, apiService: ApiService, playlistLibrary: PlaylistLibrary) {
+fun PanelTrackHeader(
+    activeSongInfo: SongInfo,
+    apiService: ApiService,
+    playlistLibrary: PlaylistLibrary,
+    modifier: Modifier = Modifier,
+) {
     val coroutineScope = rememberCoroutineScope()
 
-    fun toggleStar() {
-        coroutineScope.launch {
-            apiService.toggleStar(activeSongInfo, playlistLibrary)
-        }
-    }
-
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = activeSongInfo.songName ?: stringResource(Res.string.unknown_title),
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.titleLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -61,7 +60,13 @@ fun NowPlayingTitleRow(activeSongInfo: SongInfo, apiService: ApiService, playlis
             )
         }
 
-        IconButton(onClick = { toggleStar() }) {
+        IconButton(
+            onClick = {
+                coroutineScope.launch {
+                    apiService.toggleStar(activeSongInfo, playlistLibrary)
+                }
+            },
+        ) {
             Icon(
                 imageVector = if (activeSongInfo.starred) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                 contentDescription = stringResource(
