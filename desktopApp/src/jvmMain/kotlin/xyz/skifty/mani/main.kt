@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
@@ -24,6 +25,14 @@ fun main() {
             onCloseRequest = ::exitApplication,
             state = windowState,
             title = "Mani",
+            // The classic desktop-only painterResource(String) (reads straight from
+            // src/jvmMain/resources/) rather than the typed Compose Resources library every other
+            // module here uses - that one's codegen never activates for this module (its
+            // generateResourceAccessorsForJvmMain task's onlyIf stays false even with a
+            // composeResources/ dir in place, confirmed by hand), and this module has exactly one
+            // icon to load, not enough to justify chasing that down. Deprecated, but still fully
+            // functional - just a compile-time warning.
+            icon = painterResource("mani-icon.svg"),
             undecorated = true,
         ) {
             Column(modifier = Modifier.fillMaxSize()) {

@@ -96,6 +96,24 @@ compose.desktop {
             windows {
                 menuGroup = "Mani"
                 upgradeUuid = "25c62f15-4c9a-4f5f-9190-08d6cc8f8972"
+                // Referenced straight from the top-level icons/ folder (this project's one
+                // canonical source for icon art) rather than a copy kept under desktopApp/ -
+                // nothing to drift out of sync. jpackage's Windows --icon flag needs an actual
+                // .ico, not a raster image.
+                iconFile.set(rootProject.file("icons/mani.ico"))
+            }
+
+            // No macOS support - see targetFormats above still listing Dmg for why that's not
+            // removed outright, but there's deliberately no macOS { iconFile.set(...) } block
+            // here either.
+            linux {
+                // The opaque tile art (icon + its own background), not the transparent glyph -
+                // Linux's iconFile wants a flat raster with no transparency to look right in a
+                // .desktop launcher/taskbar. Feeds jpackage's auto-generated lib/xyz.skifty.mani.png,
+                // which packaging/arch/mani.desktop's Icon= path and packageReleaseAppImageBundle
+                // below both already consume by that fixed jpackage naming convention - neither
+                // needs to change.
+                iconFile.set(rootProject.file("icons/png/mani-tile-512.png"))
             }
 
             // The packaged app ships a custom jlink-trimmed JDK runtime (createRuntimeImage).
