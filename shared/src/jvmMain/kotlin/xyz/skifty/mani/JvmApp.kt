@@ -95,40 +95,21 @@ fun JvmApp() {
     DisposableEffect(Unit) {
         onDispose {
             mprisService?.close()
-            // Unlike the previous vlcj-backed player, this now owns a spawned mpv subprocess -
-            // releasing it here (rather than never, as before) keeps a normal app quit from
-            // orphaning it.
             audioPlayer.release()
         }
     }
 
-    // Search bar text, hoisted here (not modeled as data on Screen.Search) since it's transient
-    // input, not navigation state - see SearchBar/SearchScreen.
-    var searchQuery by remember { mutableStateOf("") }
 
-    // The screen that was active right before searchQuery went from empty to non-empty - restored
-    // when searchQuery goes back to empty. null only before any search has started.
+    var searchQuery by remember { mutableStateOf("") }
+    // keep track of screen before searching so we can go back to it
+    // when query is cleared
     var screenBeforeSearch by remember { mutableStateOf<Screen?>(null) }
 
-    // Whether NowPlayingPanel's slot is showing the queue view (QueuePanel) instead of the panel
-    // itself - toggled by NowPlayingBottomWidget's queue button, closed by QueuePanel's own X.
+    // flag to toggle between now playing and queue in side panel
     var isQueueViewActive by remember { mutableStateOf(false) }
 
-    // Reset once playback fully stops, so the panel doesn't reopen straight into the queue view
-    // the next time a song starts - the queue button is only ever reachable while a song is
-    // active in the first place, but this state would otherwise outlive that.
-    LaunchedEffect(activeSongInfo.songId) {
-        if (activeSongInfo.songId == null) {
-            isQueueViewActive = false
-        }
-    }
-
-    // All non-search navigation (sidebar clicks, login success) goes through this rather than
-    // assigning appShellState.screen directly, so it can also drop any in-progress search -
-    // without this, a sidebar click while mid-search would leave the screen and searchQuery out of
-    // sync (content switches away from Search, but the search bar still shows the old query and
-    // would restore the *pre-search* screen, not the one just navigated to, the next time it's
-    // cleared).
+    // custom navigate function since we need to reset search param
+    // otherwise we'd be stuck on search screen
     fun navigate(target: Screen) {
         appShellState.navigate(target)
         searchQuery = ""
@@ -137,8 +118,7 @@ fun JvmApp() {
 
     // Wired to SearchBar's onQueryChange - synchronous (not a LaunchedEffect) so the empty <->
     // non-empty transition and the screen it triggers always happen together, with no
-    // recomposition-timing gap between them. Deleting the last character by hand and tapping the
-    // trailing clear button both simply call this with "", so both behave identically.
+    // recomposition-timing gap between them.
     fun onSearchQueryChange(newQuery: String) {
         val wasEmpty = searchQuery.isEmpty()
         val isEmpty = newQuery.isEmpty()
