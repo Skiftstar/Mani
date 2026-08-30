@@ -12,4 +12,5 @@ sealed class Screen {
     object Library : Screen()
     object Profile : Screen()
     object NowPlaying : Screen()
+    object Queue : Screen()
 }

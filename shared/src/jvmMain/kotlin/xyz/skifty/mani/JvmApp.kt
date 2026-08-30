@@ -44,6 +44,7 @@ import xyz.skifty.mani.ui.components.SearchBar
 import xyz.skifty.mani.ui.components.Sidebar
 import xyz.skifty.mani.ui.components.nowplaying.NowPlayingBottomWidget
 import xyz.skifty.mani.ui.components.nowplayingpanel.NowPlayingPanel
+import xyz.skifty.mani.ui.components.nowplayingpanel.QueuePanel
 import xyz.skifty.mani.ui.components.util.LocalTextFieldFocusTracker
 import xyz.skifty.mani.ui.components.util.TextFieldFocusTracker
 import xyz.skifty.mani.ui.screens.Screen
@@ -108,6 +109,19 @@ fun JvmApp() {
     // The screen that was active right before searchQuery went from empty to non-empty - restored
     // when searchQuery goes back to empty. null only before any search has started.
     var screenBeforeSearch by remember { mutableStateOf<Screen?>(null) }
+
+    // Whether NowPlayingPanel's slot is showing the queue view (QueuePanel) instead of the panel
+    // itself - toggled by NowPlayingBottomWidget's queue button, closed by QueuePanel's own X.
+    var isQueueViewActive by remember { mutableStateOf(false) }
+
+    // Reset once playback fully stops, so the panel doesn't reopen straight into the queue view
+    // the next time a song starts - the queue button is only ever reachable while a song is
+    // active in the first place, but this state would otherwise outlive that.
+    LaunchedEffect(activeSongInfo.songId) {
+        if (activeSongInfo.songId == null) {
+            isQueueViewActive = false
+        }
+    }
 
     // All non-search navigation (sidebar clicks, login success) goes through this rather than
     // assigning appShellState.screen directly, so it can also drop any in-progress search -
@@ -291,8 +305,11 @@ fun JvmApp() {
                         modifier = Modifier.weight(1f)
                             .fillMaxWidth(),
                     ) {
+                        // isQueueViewActive forces the panel open regardless of window width -
+                        // opening the queue view is a deliberate user action (the bottom widget's
+                        // queue button), so it shouldn't be silently unreachable on a narrow window.
                         val showNowPlayingPanel = activeSongInfo.songId != null &&
-                            maxWidth >= MIN_WINDOW_WIDTH_FOR_NOW_PLAYING_PANEL
+                            (isQueueViewActive || maxWidth >= MIN_WINDOW_WIDTH_FOR_NOW_PLAYING_PANEL)
 
                         Row(modifier = Modifier.fillMaxSize()) {
                             if (appShellState.screen == Screen.Home || appShellState.screen == Screen.LikedSongs || appShellState.screen == Screen.Search || appShellState.screen is Screen.Playlist) {
@@ -350,7 +367,10 @@ fun JvmApp() {
                                                 CircularProgressIndicator()
                                             }
 
-                                            Screen.Home -> HomeScreen()
+                                            Screen.Home -> HomeScreen(
+                                                apiService = apiService,
+                                                playbackQueue = playbackQueue,
+                                            )
                                             Screen.Login -> LoginScreen(
                                                 apiService,
                                                 onLoginSuccess = { navigate(Screen.Home) },
@@ -388,7 +408,7 @@ fun JvmApp() {
 
                                             // Android-only destinations - desktop's Sidebar never
                                             // navigates to any of these, see Screen.kt.
-                                            Screen.Library, Screen.Profile, Screen.NowPlaying -> Unit
+                                            Screen.Library, Screen.Profile, Screen.NowPlaying, Screen.Queue -> Unit
                                         }
                                     }
 
@@ -402,12 +422,19 @@ fun JvmApp() {
                             }
 
                             if (showNowPlayingPanel) {
-                                NowPlayingPanel(
-                                    apiService = apiService,
-                                    playlistLibrary = playlistLibrary,
-                                    activeSongInfo = activeSongInfo,
-                                    playbackQueue = playbackQueue,
-                                )
+                                if (isQueueViewActive) {
+                                    QueuePanel(
+                                        playbackQueue = playbackQueue,
+                                        onClose = { isQueueViewActive = false },
+                                    )
+                                } else {
+                                    NowPlayingPanel(
+                                        apiService = apiService,
+                                        playlistLibrary = playlistLibrary,
+                                        activeSongInfo = activeSongInfo,
+                                        playbackQueue = playbackQueue,
+                                    )
+                                }
                             }
                         }
                     }
@@ -417,6 +444,8 @@ fun JvmApp() {
                             audioPlayer = audioPlayer,
                             activeSongInfo = activeSongInfo,
                             playbackQueue = playbackQueue,
+                            isQueueViewActive = isQueueViewActive,
+                            onToggleQueueView = { isQueueViewActive = !isQueueViewActive },
                         )
                     }
                 }

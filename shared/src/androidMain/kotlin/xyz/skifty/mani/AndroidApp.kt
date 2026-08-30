@@ -30,6 +30,7 @@ import xyz.skifty.mani.ui.screens.login.LoginScreen
 import xyz.skifty.mani.ui.screens.nowplaying.NowPlayingScreen
 import xyz.skifty.mani.ui.screens.playlist.PlaylistScreen
 import xyz.skifty.mani.ui.screens.profile.ProfileScreen
+import xyz.skifty.mani.ui.screens.queue.QueueScreen
 import xyz.skifty.mani.ui.screens.search.AndroidSearchScreen
 import xyz.skifty.mani.ui.theme.ManiTheme
 
@@ -70,11 +71,16 @@ fun AndroidApp() {
         appShellState.navigate(screenBeforeNowPlaying)
     }
 
-    // Where a swipe-up on the Now Playing screen lands - the playlist the current queue came
-    // from, the Liked Songs pseudo-playlist if it came from there instead (currentSourceId == null
-    // but something *is* queued - see PlaybackQueue's own doc comment), or Home if nothing's
-    // queued at all.
+    // Where a swipe-up on the Now Playing screen lands. If there's actually something queued up
+    // next, that's the Queue screen itself; otherwise, the same fallback as before this existed -
+    // the playlist the current queue came from, the Liked Songs pseudo-playlist if it came from
+    // there instead (currentSourceId == null but something *is* queued - see PlaybackQueue's own
+    // doc comment), or Home if nothing's queued at all.
     fun navigateToQueueSource() {
+        if (playbackQueue.hasNext) {
+            appShellState.navigate(Screen.Queue)
+            return
+        }
         val sourceId = playbackQueue.currentSourceId
         val target = when {
             sourceId != null -> Screen.Playlist(
@@ -133,7 +139,19 @@ fun AndroidApp() {
                             onLoginSuccess = { appShellState.navigate(Screen.Home) },
                         )
 
-                        Screen.Home -> HomeScreen()
+                        // Wrapped in its own scrolling Column, same as the Playlist/LikedSongs
+                        // branches below - HomeScreen itself doesn't self-scroll (it's shared
+                        // with JvmApp's Screen.Home branch, which already provides one).
+                        Screen.Home -> Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState()),
+                        ) {
+                            HomeScreen(
+                                apiService = apiService,
+                                playbackQueue = playbackQueue,
+                            )
+                        }
 
                         Screen.Library -> PlaylistLibraryListScreen(
                             apiService = apiService,
@@ -185,6 +203,16 @@ fun AndroidApp() {
                             activeSongInfo = activeSongInfo,
                             playbackQueue = playbackQueue,
                             playlistLibrary = playlistLibrary,
+                        )
+
+                        // Reached only via navigateToQueueSource() below (swipe-up from Now
+                        // Playing) - openNowPlaying() as the swipe-down-back callback (rather than
+                        // navigating straight to Screen.NowPlaying) also records
+                        // screenBeforeNowPlaying = Screen.Queue, so a later back-press from Now
+                        // Playing correctly returns here too.
+                        Screen.Queue -> QueueScreen(
+                            playbackQueue = playbackQueue,
+                            onSwipeDown = ::openNowPlaying,
                         )
 
                         // NowPlaying is handled below, layered over this Box instead of being one

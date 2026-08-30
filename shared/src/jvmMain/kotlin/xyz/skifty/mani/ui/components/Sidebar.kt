@@ -16,7 +16,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -39,7 +38,6 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import mani.shared.generated.resources.Res
 import mani.shared.generated.resources.cd_albums
-import mani.shared.generated.resources.cd_history
 import mani.shared.generated.resources.cd_home
 import mani.shared.generated.resources.cd_liked_songs
 import org.jetbrains.compose.resources.stringResource
@@ -89,13 +87,6 @@ fun Sidebar(
                     contentDescription = stringResource(Res.string.cd_liked_songs),
                 )
             }
-            IconButton(onClick = { /* TODO: history */ }) {
-                Icon(
-                    imageVector = Icons.Filled.History,
-                    contentDescription = stringResource(Res.string.cd_history),
-                )
-            }
-
             LazyColumn(
                 modifier = Modifier
                     .weight(1f)

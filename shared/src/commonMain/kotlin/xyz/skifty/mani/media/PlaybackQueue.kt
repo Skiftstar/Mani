@@ -63,6 +63,16 @@ class PlaybackQueue(
             return songs.getOrNull(songIndex)
         }
 
+    /** Every song still to come this pass, in actual play order (post-shuffle), each paired with
+     *  its own [playOrder] index - the stable identifier [skipTo]/[removeAt] expect. Unlike
+     *  [nextSong], deliberately does not wrap on [LoopMode.ALL] - this is "what's left in the
+     *  queue," not an infinite preview, for a Queue view to list. */
+    val upcoming: List<QueueEntry>
+        get() = playOrder.drop(currentPosition + 1)
+            .mapIndexedNotNull { offset, songIndex ->
+                songs.getOrNull(songIndex)?.let { song -> QueueEntry(currentPosition + 1 + offset, song) }
+            }
+
     /** Replaces the queue with [newSongs] (sourced from [sourceId] - a playlist id, or null for
      *  Liked Songs, matching PlaylistScreen's own convention) and starts playing [startIndex] -
      *  songs before it stay reachable via [previous], songs after via [next] (or, if shuffle is
@@ -168,6 +178,29 @@ class PlaybackQueue(
             else -> return
         }
         playCurrent()
+    }
+
+    /** Jumps straight to the [upcoming] entry at [position] - a "click to skip" from a Queue view.
+     *  Ignores [LoopMode.ONE], same as [next]/[previous]. A no-op if [position] isn't a valid
+     *  [playOrder] index. */
+    fun skipTo(position: Int) {
+        if (position !in playOrder.indices) {
+            return
+        }
+        currentPosition = position
+        playCurrent()
+    }
+
+    /** Removes the [upcoming] entry at [position] from the queue without affecting playback - a
+     *  "remove from queue" action. Only ever an upcoming entry ([position] must be past
+     *  [currentPosition]) - the currently-playing song can't be removed this way. [songs] (the
+     *  identity list) is untouched, so no reindexing concerns even with shuffle active. A no-op if
+     *  [position] isn't a removable index. */
+    fun removeAt(position: Int) {
+        if (position <= currentPosition || position !in playOrder.indices) {
+            return
+        }
+        playOrder = playOrder.toMutableList().apply { removeAt(position) }
     }
 
     /** Called when the current track finishes naturally - replays it if [LoopMode.ONE], otherwise

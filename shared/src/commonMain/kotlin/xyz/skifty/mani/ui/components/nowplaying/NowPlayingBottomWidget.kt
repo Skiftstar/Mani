@@ -12,6 +12,8 @@ import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -40,7 +42,13 @@ import xyz.skifty.mani.ui.theme.SpotifyBottomBarBackground
 
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun NowPlayingBottomWidget(audioPlayer: AudioPlayer, activeSongInfo: SongInfo, playbackQueue: PlaybackQueue) {
+fun NowPlayingBottomWidget(
+    audioPlayer: AudioPlayer,
+    activeSongInfo: SongInfo,
+    playbackQueue: PlaybackQueue,
+    isQueueViewActive: Boolean,
+    onToggleQueueView: () -> Unit,
+) {
 
     var positionMs by remember { mutableLongStateOf(0L) }
     var durationMs by remember { mutableLongStateOf(1L) } // avoid /0
@@ -131,10 +139,15 @@ fun NowPlayingBottomWidget(audioPlayer: AudioPlayer, activeSongInfo: SongInfo, p
             ) {
                 VolumeControl(audioPlayer = audioPlayer)
 
-                IconButton(onClick = { /* TODO: queue */ }) {
+                IconButton(onClick = onToggleQueueView) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.QueueMusic,
                         contentDescription = stringResource(Res.string.cd_queue),
+                        tint = if (isQueueViewActive) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            LocalContentColor.current
+                        },
                     )
                 }
 

@@ -248,6 +248,24 @@ class ApiService {
         return songInfos
     }
 
+    /** A random sample of [size] songs from across the whole library - the Home screen's
+     *  "Random Songs" shelf. Degrades to an empty list on any non-2xx response, same as
+     *  [getStarredSongs]/[search3], rather than throwing. */
+    suspend fun getRandomSongs(size: Int): List<SongInfo> {
+        val result = httpClient.get(buildUrl("/rest/getRandomSongs", mapOf("size" to size.toString())))
+
+        val songInfos: MutableList<SongInfo> = mutableListOf()
+        if (result.status.isSuccess()) {
+            val subsonicResponseWrapper: SubsonicResponseWrapper = result.body()
+
+            for (responseSongInfo in subsonicResponseWrapper.response.randomSongs?.song.orEmpty()) {
+                songInfos.add(toSongInfo(responseSongInfo))
+            }
+        }
+
+        return songInfos
+    }
+
     /** Stars [songId] server-side (makes it appear in getStarredSongs()/Liked Songs). */
     suspend fun star(songId: String): Result<Unit> = setStarred("/rest/star", songId)
 

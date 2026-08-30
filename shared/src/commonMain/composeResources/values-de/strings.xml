@@ -15,9 +15,14 @@
     <!-- Sidebar -->
     <string name="cd_home">Startseite</string>
     <string name="cd_liked_songs">Lieblingssongs</string>
-    <string name="cd_history">Verlauf</string>
     <string name="cd_albums">Alben</string>
     <string name="cd_playlist_cover">Playlist-Cover</string>
+
+    <!-- Home screen -->
+    <string name="home_random_songs_title">Zufällige Songs</string>
+    <string name="home_liked_random_title">Aus deinen Lieblingssongs</string>
+    <string name="cd_shelf_scroll_left">Nach links scrollen</string>
+    <string name="cd_shelf_scroll_right">Nach rechts scrollen</string>
 
     <!-- Bottom nav (Android) -->
     <string name="nav_home">Start</string>
@@ -62,6 +67,12 @@
     <string name="now_playing_panel_title">Wird wiedergegeben</string>
     <string name="now_playing_panel_plays_count">%1$d Wiedergaben</string>
     <string name="now_playing_panel_next_in_queue">Als Nächstes in der Warteschlange</string>
+
+    <!-- Queue view -->
+    <string name="queue_title">Warteschlange</string>
+    <string name="queue_empty_state">Keine Songs in der Warteschlange</string>
+    <string name="cd_remove_from_queue">Aus der Warteschlange entfernen</string>
+    <string name="cd_close_queue">Warteschlange schließen</string>
 
     <!-- Search -->
     <string name="search_placeholder">Songs suchen</string>
