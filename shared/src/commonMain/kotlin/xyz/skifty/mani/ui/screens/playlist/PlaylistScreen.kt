@@ -66,12 +66,6 @@ fun PlaylistScreen(
         }
     } else {
         Column(
-            // Deliberately not self-scrolling here - desktop's JvmApp.kt already wraps every
-            // screen in one shared verticalScroll Column, and nesting a second vertically
-            // scrollable container directly inside that one isn't harmless: it hits Compose's
-            // "measured with infinity maximum height constraints" check and crashes. Callers
-            // that render this screen with no outer scroll container of their own (Android's
-            // AndroidApp.kt) are responsible for supplying one themselves.
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 24.dp),
@@ -94,9 +88,7 @@ fun PlaylistScreen(
                 onSongClick = { index ->
                     playbackQueue.start(currentDetails.songs, index, playlistId)
                 },
-                // Never shown for Liked Songs (playlistId == null) - there's no Subsonic
-                // playlist id to remove a song from there; unstarring is the equivalent action,
-                // already covered by the Like/Unlike item.
+                // Never shown for Liked Songs (playlistId == null)
                 onRemoveFromPlaylist = playlistId?.let { pid ->
                     { index: Int ->
                         val song = currentDetails.songs.getOrNull(index)
@@ -112,10 +104,8 @@ fun PlaylistScreen(
                                     details = previous
                                 } else {
                                     playlistLibrary.recordSongRemoved(pid, songId)
-                                    // Picked up by every reader of playlistLibrary.playlists
-                                    // automatically (Sidebar in particular) - same reasoning as
-                                    // the add side: a playlist's cover art can be auto-derived
-                                    // from its songs, so removing one can change it too.
+                                    // refresh playlists since adding/removing songs can
+                                    // change the cover art
                                     playlistLibrary.refreshPlaylists(apiService)
                                 }
                             }

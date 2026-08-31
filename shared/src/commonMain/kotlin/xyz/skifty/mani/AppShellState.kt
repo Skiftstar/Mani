@@ -20,14 +20,9 @@ import xyz.skifty.mani.security.SecureStorage
 import xyz.skifty.mani.ui.screens.Screen
 
 // A song counts as "listened to" for scrobbling once at least half of it, or this many ms of it
-// (whichever is reached first), has actually been heard - see scrobbleIfNeeded below. Matches the
-// same rule most scrobblers (e.g. last.fm) use.
+// (whichever is reached first), has actually been heard
 private const val SCROBBLE_MIN_LISTEN_MS = 4 * 60 * 1000L
 
-/** The platform-agnostic slice of app-shell state - which screen is active and the app-wide
- *  singletons every screen needs - built and driven by [rememberAppShellState]. Chrome (sidebar
- *  vs. bottom nav, desktop-only MPRIS effects, the Space-to-pause keybind, search-bar state) stays
- *  local to each platform's own composable (JvmApp/AndroidApp), not here. */
 class AppShellState(
     val audioPlayer: AudioPlayer,
     val activeSongInfo: SongInfo,
@@ -46,13 +41,6 @@ class AppShellState(
         screen = target
     }
 
-    /** Clears the current session, both in-memory ([ApiService]) and persisted ([SecureStorage]),
-     *  and returns to the login screen - the inverse of [rememberAppShellState]'s startup session
-     *  restore. Storage deletion failures (e.g. no system keyring reachable) shouldn't block
-     *  logging out - the in-memory session is cleared and the user is sent to Login regardless.
-     *  Also stops playback and clears [activeSongInfo] - otherwise the mini-player/now-playing
-     *  chrome (gated on activeSongInfo.songId != null) would keep showing over the login screen,
-     *  still playing audio for whoever's about to log in next. */
     fun logout() {
         audioPlayer.stop(activeSongInfo)
         apiService.clearSession()
@@ -162,13 +150,12 @@ fun rememberAppShellState(): AppShellState {
     // scrobble the same just-completed song.
     var lastScrobbledSongId by remember { mutableStateOf<String?>(null) }
 
-    // Subsonic doesn't enforce a minimum-listen rule itself - scrobbling is meant to represent an
-    // actual listen, so only report one once [listenedMs] (real elapsed playing time, not
-    // position - see AudioPlayer.listenedMs()) crosses SCROBBLE_MIN_LISTEN_MS.
+    // Subsonic doesn't enforce a minimum-listen rule itself, so we have to do it ourselves
     suspend fun scrobbleIfNeeded(songId: String?, listenedMs: Long, durationMs: Long) {
         if (songId == null || songId == lastScrobbledSongId || durationMs <= 0) {
             return
         }
+        // half the song or SCROLLBE_MIN_LISTEN_MS, whichever is less
         val thresholdMs = minOf(durationMs / 2, SCROBBLE_MIN_LISTEN_MS)
         if (listenedMs >= thresholdMs) {
             lastScrobbledSongId = songId
@@ -176,7 +163,6 @@ fun rememberAppShellState(): AppShellState {
         }
     }
 
-    // A track finishing naturally is the queue's cue to advance (or replay, on loop-one).
     LaunchedEffect(audioPlayer.trackFinishedCount) {
         if (audioPlayer.trackFinishedCount > 0) {
             scrobbleIfNeeded(activeSongInfo.songId, audioPlayer.listenedMs(), audioPlayer.length())

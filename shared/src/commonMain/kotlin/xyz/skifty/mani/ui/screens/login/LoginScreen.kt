@@ -50,17 +50,13 @@ import xyz.skifty.mani.api.ApiService
 import xyz.skifty.mani.ext.trackTextFieldFocus
 import xyz.skifty.mani.security.SecureStorage
 
-/** A login-screen error that hasn't been resolved to displayable text yet - some variants need
- *  [stringResource] (and so must be resolved during composition, not from the coroutine that
- *  raises them), others carry text that's already final (e.g. an exception's own message). */
+
 private sealed interface LoginUiError {
     data class Message(val text: String) : LoginUiError
     data object LoginFailed : LoginUiError
     data class SaveFailed(val detail: String) : LoginUiError
 }
 
-// More rounded than OutlinedTextField's default (a much subtler MaterialTheme.shapes.extraSmall),
-// but well short of a fully-rounded pill - just softened corners on the three fields below.
 private val LoginFieldShape = RoundedCornerShape(16.dp)
 
 @Composable
@@ -126,8 +122,6 @@ fun LoginScreen(apiService: ApiService, onLoginSuccess: () -> Unit) {
             .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center,
     ) {
-        // No card - unlike the previous design, this one sits directly on the screen background,
-        // full-bleed and left-aligned, matching the reference login screen the user provided.
         Column(
             modifier = Modifier.widthIn(max = 400.dp)
                 .padding(24.dp)

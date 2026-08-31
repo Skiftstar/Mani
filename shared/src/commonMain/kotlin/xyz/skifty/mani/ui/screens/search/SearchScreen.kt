@@ -32,22 +32,12 @@ import xyz.skifty.mani.media.SongInfo
 import xyz.skifty.mani.ui.components.PlaylistSongTable
 import xyz.skifty.mani.ui.components.playlistTableHorizontalPadding
 
-// How long to wait after the user stops typing before actually calling search3() - short enough
-// to feel responsive, long enough to avoid firing a request per keystroke.
+// How long to wait after the user stops typing before actually calling search3()
 private const val SEARCH_DEBOUNCE_MS = 300L
 
-// Songs fetched per page, both for the initial load and each subsequent infinite-scroll page.
+// Songs fetched per "page"
 private const val SEARCH_PAGE_SIZE = 25
 
-/** Shown whenever the top search bar's query is non-empty (see JvmApp) - debounces [query] and
- *  renders matching songs via search3 (songs only; no album/artist results are fetched), loading
- *  further pages as [scrollState] (shared with the rest of the app's content area, since this
- *  screen doesn't own its own scrollable container) nears its bottom. A blank [query] is sent to
- *  search3 too rather than skipped - Navidrome (and likely other Subsonic servers) treats an empty
- *  query as "browse everything", which makes a nice default view rather than an empty screen the
- *  moment Search opens.
- *  Clicking a result clears the queue and plays only that song, rather than queuing the rest of
- *  the result set. */
 @Composable
 fun SearchScreen(
     apiService: ApiService,
@@ -64,13 +54,10 @@ fun SearchScreen(
     // `details: PlaylistDetails?`. Further pages are appended in place once fetched.
     var results by remember { mutableStateOf<List<SongInfo>?>(null) }
 
-    // True while a *subsequent* page is being fetched - kept separate from `results == null`
-    // (which only means "no page has loaded yet at all") so the infinite-scroll trigger below
-    // doesn't fire a second overlapping request for the same page.
+    // true while loading another page of results
     var isLoadingMore by remember { mutableStateOf(false) }
 
-    // False once a fetched page comes back with fewer than SEARCH_PAGE_SIZE songs - the standard
-    // "short page means we've reached the end" signal, avoiding pointless further requests.
+    // additional fetching possible (more results than 1 page size)
     var hasMore by remember { mutableStateOf(true) }
 
     LaunchedEffect(query) {
@@ -139,8 +126,7 @@ fun SearchScreen(
                     playbackQueue = playbackQueue,
                     playlistLibrary = playlistLibrary,
                     onSongClick = { index ->
-                        // Clears the queue and plays only the clicked song - a singleton list
-                        // makes hasNext/hasPrevious correctly report false.
+                        // Clears the queue and plays only the clicked song
                         playbackQueue.start(
                             newSongs = listOf(currentResults[index]),
                             startIndex = 0,

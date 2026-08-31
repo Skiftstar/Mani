@@ -24,11 +24,6 @@ import xyz.skifty.mani.ui.screens.home.components.HomeShelf
 // the sample size for the client-side shuffle of the (usually much larger) Liked Songs shelf.
 private const val HOME_SHELF_SONG_COUNT = 15
 
-/** The Home screen - "Random Songs" (a fresh server-side sample every visit) and "Random from
- *  your Liked Songs" (a client-side shuffle of [ApiService.getStarredSongs]) shelves, each a
- *  horizontally-scrolling row of tiles. Does not scroll itself - callers are expected to already
- *  provide a vertical scroll container (see JvmApp.kt/AndroidApp.kt's own call sites), the same
- *  constraint PlaylistScreen's own doc comment calls out. */
 @Composable
 fun HomeScreen(apiService: ApiService, playbackQueue: PlaybackQueue) {
     var randomSongs by remember { mutableStateOf<List<SongInfo>>(emptyList()) }

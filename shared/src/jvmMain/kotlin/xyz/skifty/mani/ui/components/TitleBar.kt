@@ -41,7 +41,7 @@ import mani.shared.generated.resources.cd_maximize_window
 import mani.shared.generated.resources.cd_minimize_window
 import mani.shared.generated.resources.cd_restore_window
 import org.jetbrains.compose.resources.stringResource
-import xyz.skifty.mani.ui.theme.SpotifyBottomBarBackground
+import xyz.skifty.mani.ui.theme.BottomBarBackground
 
 private val TITLE_BAR_HEIGHT = 36.dp
 private val TITLE_BAR_BUTTON_SIZE = 36.dp
@@ -52,7 +52,7 @@ private val TITLE_BAR_ICON_SIZE = 16.dp
  *  [WindowDraggableArea] (the standard mechanism for undecorated windows, e.g. Discord/Spotify's
  *  own title bars) makes the whole bar draggable to move the window; the three buttons on the
  *  right drive [windowState] directly (minimize, toggle maximize) or call [onCloseClick]. Painted
- *  the same [SpotifyBottomBarBackground] tone as NowPlayingBottomWidget - a shade darker than the
+ *  the same [BottomBarBackground] tone as NowPlayingBottomWidget - a shade darker than the
  *  rest of the app's background - so it reads as a distinct surface bracketing the window at both
  *  top and bottom, with a divider marking where it ends. Requires a
  *  [xyz.skifty.mani.ui.theme.ManiTheme] ancestor to pick up the theme's other colors (text,
@@ -74,7 +74,7 @@ fun WindowScope.TitleBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(TITLE_BAR_HEIGHT)
-                .background(SpotifyBottomBarBackground),
+                .background(BottomBarBackground),
         ) {
             Row(
                 modifier = Modifier

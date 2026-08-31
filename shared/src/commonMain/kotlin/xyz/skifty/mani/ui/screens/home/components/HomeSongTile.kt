@@ -26,10 +26,6 @@ import xyz.skifty.mani.media.SongInfo
 
 private val TILE_WIDTH = 120.dp
 
-/** One tile in a [HomeShelf] - square cover art with title/artist captioned below it, clickable
- *  to play. The app's first "cover + caption underneath" tile - everywhere else a song shows up
- *  is either a full-width list row ([xyz.skifty.mani.ui.components.PlaylistSongRow]) or an
- *  icon-sized thumbnail (Sidebar's playlist rail). */
 @Composable
 fun HomeSongTile(songInfo: SongInfo, onClick: () -> Unit) {
     Column(

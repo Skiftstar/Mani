@@ -15,20 +15,20 @@ import androidx.compose.ui.graphics.Brush
 // for elevation contrast, which wouldn't reproduce the reference screenshot's flat, uniformly
 // near-black surfaces.
 private val ManiDarkColorScheme = darkColorScheme(
-    primary = SpotifyPrimary,
-    onPrimary = SpotifyOnPrimary,
-    primaryContainer = SpotifyPrimaryContainer,
-    onPrimaryContainer = SpotifyOnPrimaryContainer,
-    tertiary = SpotifyTertiary,
-    onTertiary = SpotifyOnTertiary,
-    background = SpotifyBackground,
-    onBackground = SpotifyOnBackground,
-    surface = SpotifyBackground,
-    onSurface = SpotifyOnBackground,
-    surfaceVariant = SpotifySurfaceVariant,
-    onSurfaceVariant = SpotifyOnSurfaceVariant,
-    surfaceContainer = SpotifyBackground,
-    outlineVariant = SpotifyOutlineVariant,
+    primary = PrimaryAccent,
+    onPrimary = AccentButtonText,
+    primaryContainer = PlaylistPlaceholderBackground,
+    onPrimaryContainer = PlaylistPlaceholderIcon,
+    tertiary = SliderFill,
+    onTertiary = OnSliderFill,
+    background = MainBackground,
+    onBackground = MainText,
+    surface = MainBackground,
+    onSurface = MainText,
+    surfaceVariant = SurfaceVariant,
+    onSurfaceVariant = TextVariant,
+    surfaceContainer = MainBackground,
+    outlineVariant = OutlineVariant,
 )
 
 /** [fillContainer] wraps [content] in a full-size [Surface] (the default) - needed wherever
@@ -50,15 +50,15 @@ fun ManiTheme(
                 color = MaterialTheme.colorScheme.background,
             ) {
                 // A really slight vertical gradient over Surface's own flat background, rather
-                // than replacing it outright - fades back down to plain SpotifyBackground by the
-                // bottom of the window, so it still meshes with the flat SpotifyBackground/
+                // than replacing it outright - fades back down to plain MainBackground by the
+                // bottom of the window, so it still meshes with the flat MainBackground/
                 // surfaceContainer-toned Sidebar/NowPlayingPanel/etc. it sits alongside.
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(
                             brush = Brush.verticalGradient(
-                                colors = listOf(SpotifyBackgroundGradientTop, SpotifyBackground),
+                                colors = listOf(BackgroundGradientTop, MainBackground),
                             ),
                         ),
                 ) {

@@ -28,10 +28,10 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.delay
 import androidx.compose.ui.tooling.preview.Preview
 import xyz.skifty.mani.ext.toLocale
 import xyz.skifty.mani.i18n.AppLanguage
+import xyz.skifty.mani.media.DesktopAudioPlayer
 import java.util.Locale
 
 import androidx.compose.foundation.layout.Row
@@ -90,6 +90,18 @@ fun JvmApp() {
                 e.printStackTrace()
             }
             .getOrNull()
+            // Notified directly from the exact call sites that confirm each event, rather than via
+            // a LaunchedEffect watching seekCount/playbackStartedCount - see those properties' own
+            // doc comments on DesktopAudioPlayer.
+            ?.also { service ->
+                (audioPlayer as? DesktopAudioPlayer)?.let { desktopAudioPlayer ->
+                    desktopAudioPlayer.onSeeked = { service.notifySeeked() }
+                    desktopAudioPlayer.onPlaybackStarted = { positionMs ->
+                        service.notifyStateChanged()
+                        service.notifySeeked(positionMs * 1000)
+                    }
+                }
+            }
     }
 
     DisposableEffect(Unit) {
@@ -156,54 +168,13 @@ fun JvmApp() {
         mprisService?.notifyStateChanged()
     }
 
-    // Playback (re)starting is a new "start counting from here" reference point for widgets that
-    // interpolate track position locally instead of polling it - see MprisService.notifySeeked().
-    // Watches playbackStartedCount rather than isPlaying: skipping straight from one playing track
-    // to another never actually flips isPlaying's value, so it wouldn't retrigger this effect.
-    //
-    // Re-sends notifyStateChanged() here too, immediately before notifySeeked(), rather than
-    // relying on the LaunchedEffect above to have already done so: activeSongInfo's fields change
-    // synchronously the instant a new track is requested, well before libVLC actually confirms
-    // playback started - so that effect fires early, with the *new* track's metadata but no
-    // matching position yet. Sending both together, in this order, right when the position is
-    // finally trustworthy gives listeners one consistent "here's the new track, here's where it
-    // actually is" update instead of racing two separately-timed broadcasts.
-    LaunchedEffect(audioPlayer.playbackStartedCount) {
-        if (audioPlayer.playbackStartedCount > 0) {
-            mprisService?.notifyStateChanged()
-            mprisService?.notifySeeked(audioPlayer.lastConfirmedStartPositionMs * 1000)
-        }
-    }
-
-    // Same idea for an explicit seek (in-app progress slider or an MPRIS client) - covers both
-    // uniformly since audioPlayer.seek()/seekFraction() bump seekCount regardless of who called them.
-    LaunchedEffect(audioPlayer.seekCount) {
-        if (audioPlayer.seekCount > 0) {
-            mprisService?.notifySeeked()
-        }
-    }
-
-    // Belt-and-braces re-anchor while playing: some MPRIS clients interpolate position locally
-    // using their own clock, which can drift from the real audio clock over time between anchors -
-    // periodically re-sending the live position bounds how far that can drift, and self-heals if a
-    // client ever misses one of the event-driven notifySeeked() calls above.
-    LaunchedEffect(audioPlayer.isPlaying) {
-        while (audioPlayer.isPlaying) {
-            mprisService?.notifySeeked()
-            delay(3000)
-        }
-    }
-
     // Space toggles play/pause from anywhere in the window, except while a text field has focus
     // (search box, login fields, and any added later - see LocalTextFieldFocusTracker).
     val textFieldFocusTracker = remember { TextFieldFocusTracker() }
-    var isSpaceKeyDown by remember { mutableStateOf(false) }
     val rootFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
-        // So the root already sits somewhere in the focus chain even before the user clicks
-        // anything - onPreviewKeyEvent below only sees key events when focus is somewhere within
-        // its own subtree.
+        // Focus root on launch, so local keybind Space works
         rootFocusRequester.requestFocus()
     }
 
@@ -214,44 +185,23 @@ fun JvmApp() {
                     modifier = Modifier
                         .safeContentPadding()
                         .fillMaxSize()
-                        // Clicking empty space elsewhere in the app (not a text field, not some
-                        // other focusable element - those consume the click themselves before it
-                        // reaches here) unfocuses whatever text field currently has focus, rather
-                        // than leaving it focused until something else is explicitly clicked.
-                        // Moves focus back to the root itself (not focusManager.clearFocus(),
-                        // which clears it entirely) - onPreviewKeyEvent below only sees key events
-                        // when focus is somewhere within this Column's own subtree, so Space would
-                        // stop working the moment nothing at all was focused.
+                        // focus root instead of clearing focus so local keybind still works
+                        // handle click on empty space to clear textfield focus
                         .pointerInput(Unit) {
                             detectTapGestures { rootFocusRequester.requestFocus() }
                         }
                         .focusRequester(rootFocusRequester)
                         .focusTarget()
-                        // onPreviewKeyEvent (top-down) rather than onKeyEvent (bottom-up): placed
-                        // on the app's own root, above every screen in the focus hierarchy, so it
-                        // sees Space regardless of what currently holds focus deeper in the tree -
-                        // and consuming it here first (returning true) stops it from also reaching
-                        // a focused button and triggering *that* button's own native
-                        // Space-activates-click behavior, matching how Space behaves in essentially
-                        // every media player: unconditional play/pause unless you're actively typing.
+                        // onPreviewKeyEvent consumes events first at root level, instead
+                        // of onKeyEvent which consumes on component event first, so we use PreviewKeyEvent
+                        // that way we dont accidentally hit a button or smth
                         .onPreviewKeyEvent { event ->
                             if (event.key != Key.Spacebar || textFieldFocusTracker.isAnyFieldFocused) {
                                 return@onPreviewKeyEvent false
                             }
                             when (event.type) {
-                                // Holding Space down fires repeated KeyDown events at the OS's
-                                // key-repeat rate - the isSpaceKeyDown latch means only the first
-                                // one (until the next KeyUp) actually toggles playback.
                                 KeyEventType.KeyDown -> {
-                                    if (!isSpaceKeyDown) {
-                                        isSpaceKeyDown = true
-                                        playbackQueue.togglePlayPause()
-                                    }
-                                    true
-                                }
-
-                                KeyEventType.KeyUp -> {
-                                    isSpaceKeyDown = false
+                                    playbackQueue.togglePlayPause()
                                     true
                                 }
 

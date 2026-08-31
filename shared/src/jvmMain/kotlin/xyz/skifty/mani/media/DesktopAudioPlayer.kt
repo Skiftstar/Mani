@@ -50,6 +50,14 @@ class DesktopAudioPlayer : AudioPlayer {
     override var lastConfirmedStartPositionMs: Long by mutableStateOf(0L)
         private set
 
+    // Fired right alongside seekCount/playbackStartedCount above, at the exact point each is
+    // bumped - JvmApp wires these to MprisService once it's constructed, so MPRIS listeners
+    // (Noctalia, waybar, etc.) get notified directly instead of via a Compose LaunchedEffect
+    // watching the counters. Left as plain nullable callbacks (not MPRIS-specific in name) since
+    // this class has no knowledge of MPRIS itself - only JvmApp does.
+    var onSeeked: (() -> Unit)? = null
+    var onPlaybackStarted: ((confirmedPositionMs: Long) -> Unit)? = null
+
     // Cached from mpv's "time-pos"/"duration" property-change events, pushed asynchronously on
     // the IPC reader thread, rather than queried live on every call - currentPosition() is polled
     // 5x/sec by NowPlayingBottomWidget, and a cached read is far cheaper than an IPC round-trip
@@ -112,6 +120,7 @@ class DesktopAudioPlayer : AudioPlayer {
             pendingIsPlaying?.let { playing -> setIsPlaying(playing) }
             pendingIsPlaying = null
             playbackStartedCount++
+            onPlaybackStarted?.invoke(lastConfirmedStartPositionMs)
         }
 
         mpv.onEvent("end-file") { message ->
@@ -265,12 +274,14 @@ class DesktopAudioPlayer : AudioPlayer {
     override fun seek(ms: Long) {
         mpv.sendCommand("seek", ms / 1000.0, "absolute")
         seekCount++
+        onSeeked?.invoke()
     }
 
     override fun seekFraction(fraction: Float) {
         val targetMs = (fraction.coerceIn(0f, 1f) * cachedDurationMs).toLong()
         mpv.sendCommand("seek", targetMs / 1000.0, "absolute")
         seekCount++
+        onSeeked?.invoke()
     }
 
     /** Get current playback time in milliseconds, from the cached value kept up to date by mpv's

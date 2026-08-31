@@ -2,32 +2,36 @@ package xyz.skifty.mani.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Background / surfaces - the near-black navy behind everything in the reference screenshot.
-val SpotifyBackground = Color(0xFF0B0E14)
-val SpotifySurfaceVariant = Color(0xFF1C212C)
-val SpotifyOutlineVariant = Color(0xFF2A2F3A)
+// Background / surfaces
+val MainBackground = Color(0xFF0B0E14)
+val SurfaceVariant = Color(0xFF1C212C)
+val OutlineVariant = Color(0xFF2A2F3A)
 
-// The very top of ManiTheme's main-background gradient - a touch lighter than SpotifyBackground,
-// which the gradient fades back down to by the bottom of the window, so it still meshes seamlessly
-// with the flat SpotifyBackground-toned Sidebar/NowPlayingPanel/etc. around and below it.
-val SpotifyBackgroundGradientTop = Color(0xFF10141F)
+// The very top of main background gradient
+val BackgroundGradientTop = Color(0xFF10141F)
 
-// NowPlayingBottomWidget's own background - a shade darker than SpotifyBackground so the bar
-// reads as a distinct surface instead of blending into the (surfaceContainer-toned) Sidebar/
-// content behind it, which deliberately shares SpotifyBackground's exact value - see Theme.kt.
-val SpotifyBottomBarBackground = Color(0xFF070A10)
+// Bottom Now Playing Bar background
+val BottomBarBackground = Color(0xFF070A10)
 
-// Text.
-val SpotifyOnBackground = Color(0xFFFFFFFF)
-val SpotifyOnSurfaceVariant = Color(0xFFA7A7A7)
+// Text
+val MainText = Color(0xFFFFFFFF)
+val TextVariant = Color(0xFFA7A7A7)
 
-// Primary accent - the circular Play button's blue.
-val SpotifyPrimary = Color(0xFF2D8CFF)
-val SpotifyOnPrimary = Color(0xFFFFFFFF)
-val SpotifyPrimaryContainer = Color(0xFF1E3A5F)
-val SpotifyOnPrimaryContainer = Color(0xFFD3E4FF)
+// Accent
+val PrimaryAccent = Color(0xFF2D8CFF)
 
-// Tertiary - Spotify's actual brand green, used for the song progress bar and volume slider,
-// deliberately distinct from the screenshot's blue accent used everywhere else.
-val SpotifyTertiary = Color(0xFF1DB954)
-val SpotifyOnTertiary = Color(0xFF00210B)
+// Content color for buttons filled with PrimaryAccent (currently only the Login button's loading
+// spinner).
+val AccentButtonText = Color(0xFFFFFFFF)
+
+// Background of the "no cover art" playlist placeholder tile.
+val PlaylistPlaceholderBackground = Color(0xFF1E3A5F)
+
+// Icon tint on that same placeholder tile.
+val PlaylistPlaceholderIcon = Color(0xFFD3E4FF)
+
+val SliderFill = Color(0xFF1DB954)
+
+// Would technically be for stuff on top of the slider fill
+// but never used, just there for completeness of scheme tbh
+val OnSliderFill = Color(0xFF00210B)

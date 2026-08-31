@@ -29,20 +29,8 @@ import mani.shared.generated.resources.cd_shelf_scroll_right
 import org.jetbrains.compose.resources.stringResource
 import xyz.skifty.mani.media.SongInfo
 
-// A LazyRow needs a bounded height of its own - left to wrap-content, it inherits the unbounded
-// height its parent (JvmApp's shared verticalScroll Column) hands every child, which is exactly
-// what was leaving the shelf's true content height unresolved and the whole screen unscrollable
-// past the window's bottom edge. Sized generously above HomeSongTile's own natural height (120dp
-// cover + its two caption lines) so default-size text never clips.
 private val SHELF_ROW_HEIGHT = 190.dp
 
-/** One horizontally-scrolling row on the Home screen - a [title] above a [LazyRow] of
- *  [HomeSongTile]s built from [songs]. On desktop ([showHomeShelfPageArrows]), flanked by
- *  prev/next arrows that page through it one viewport-width at a time; on Android, plain free
- *  scrolling by dragging the row directly is the only way to move it - the natural touch gesture,
- *  so the arrows would just be redundant there. Generic over its own song list/title so each
- *  shelf (Random Songs, Random from Liked Songs, and whatever comes later) is just another call
- *  site. */
 @Composable
 fun HomeShelf(title: String, songs: List<SongInfo>, onSongClick: (index: Int) -> Unit) {
     if (songs.isEmpty()) {

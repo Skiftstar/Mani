@@ -38,7 +38,7 @@ import xyz.skifty.mani.ui.components.nowplaying.components.PlaybackButtons
 import xyz.skifty.mani.ui.components.nowplaying.components.ProgressSlider
 import xyz.skifty.mani.ui.components.nowplaying.components.TrackInfo
 import xyz.skifty.mani.ui.components.nowplaying.components.VolumeControl
-import xyz.skifty.mani.ui.theme.SpotifyBottomBarBackground
+import xyz.skifty.mani.ui.theme.BottomBarBackground
 
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -101,12 +101,12 @@ fun NowPlayingBottomWidget(
     // overflows slightly above its own top edge to stay centered on a track that sits flush at
     // this widget's top edge, with zero gap above it).
     //
-    // SpotifyBottomBarBackground rather than MaterialTheme.colorScheme.surfaceContainer - that
+    // BottomBarBackground rather than MaterialTheme.colorScheme.surfaceContainer - that
     // token is deliberately the exact same value as the main background elsewhere (Sidebar,
     // NowPlayingPanel), so using it here too would make this bar blend invisibly into the content
     // above it instead of reading as its own distinct surface.
     Column(
-        modifier = Modifier.background(SpotifyBottomBarBackground),
+        modifier = Modifier.background(BottomBarBackground),
     ) {
         ProgressSlider(
             audioPlayer = audioPlayer,
