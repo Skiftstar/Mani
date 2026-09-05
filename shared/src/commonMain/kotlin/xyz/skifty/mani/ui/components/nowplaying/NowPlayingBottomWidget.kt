@@ -8,7 +8,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -21,15 +23,19 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import mani.shared.generated.resources.Res
 import mani.shared.generated.resources.cd_fullscreen
 import mani.shared.generated.resources.cd_queue
+import mani.shared.generated.resources.cd_star
+import mani.shared.generated.resources.cd_unstar
 import org.jetbrains.compose.resources.stringResource
 import xyz.skifty.mani.media.AudioPlayer
 import xyz.skifty.mani.media.PlaybackQueue
@@ -38,6 +44,9 @@ import xyz.skifty.mani.ui.components.nowplaying.components.PlaybackButtons
 import xyz.skifty.mani.ui.components.nowplaying.components.ProgressSlider
 import xyz.skifty.mani.ui.components.nowplaying.components.TrackInfo
 import xyz.skifty.mani.ui.components.nowplaying.components.VolumeControl
+import xyz.skifty.mani.api.ApiService
+import xyz.skifty.mani.ext.toggleStar
+import xyz.skifty.mani.media.PlaylistLibrary
 import xyz.skifty.mani.ui.theme.BottomBarBackground
 
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalMaterial3Api::class)
@@ -45,10 +54,14 @@ import xyz.skifty.mani.ui.theme.BottomBarBackground
 fun NowPlayingBottomWidget(
     audioPlayer: AudioPlayer,
     activeSongInfo: SongInfo,
+    apiService: ApiService,
+    playlistLibrary: PlaylistLibrary,
     playbackQueue: PlaybackQueue,
     isQueueViewActive: Boolean,
     onToggleQueueView: () -> Unit,
 ) {
+
+    val coroutineScope = rememberCoroutineScope()
 
     var positionMs by remember { mutableLongStateOf(0L) }
     var durationMs by remember { mutableLongStateOf(1L) } // avoid /0
@@ -123,7 +136,26 @@ fun NowPlayingBottomWidget(
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TrackInfo(songInfo = activeSongInfo, modifier = Modifier.weight(1f))
+            Row (modifier = Modifier.weight(1f)) {
+                TrackInfo(songInfo = activeSongInfo, modifier = Modifier.weight(1f, fill = false))
+                IconButton(
+                    onClick = {
+                        coroutineScope.launch {
+                            apiService.toggleStar(activeSongInfo, playlistLibrary)
+                        }
+                    },
+                ) {
+                    Icon(
+                        imageVector = if (activeSongInfo.starred) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                        contentDescription = stringResource(
+                            if (activeSongInfo.starred) Res.string.cd_unstar else Res.string.cd_star,
+                        ),
+                        tint = if (activeSongInfo.starred) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+
 
             PlaybackButtons(
                 audioPlayer = audioPlayer,

@@ -373,6 +373,8 @@ fun JvmApp() {
                         NowPlayingBottomWidget(
                             audioPlayer = audioPlayer,
                             activeSongInfo = activeSongInfo,
+                            apiService = apiService,
+                            playlistLibrary = playlistLibrary,
                             playbackQueue = playbackQueue,
                             isQueueViewActive = isQueueViewActive,
                             onToggleQueueView = { isQueueViewActive = !isQueueViewActive },
