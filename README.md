@@ -1,13 +1,13 @@
 # Mani
 
+> [!WARNING]
+> This whole app is pretty much written by Claude. I wanted to get it done pretty quickly just as a personal project, so I can finally move away from ytm/spotify. I did read over the code and while it's pretty messy, I chose to leave it as is, since it's not meant to be developed further anyways.
+
 A Subsonic/Navidrome music client for desktop and Android, built with Kotlin
 Multiplatform and Compose Multiplatform. Desktop playback is driven by
 [mpv](https://mpv.io/) over its JSON IPC socket, with MPRIS integration on
-Linux (so your desktop's own media controls/OSD, shell widgets, etc. all work
-against it); Android playback runs on Media3/ExoPlayer as a background
-service, with the same lock-screen/notification controls any other Android
-music app gets. Both share a Spotify-style set of features: search,
-playlists, Liked Songs, scrobbling.
+Linux. Android playback runs on Media3/ExoPlayer as a background
+service.
 
 ## Installation
 
@@ -103,7 +103,7 @@ This is a Kotlin Multiplatform project targeting Android and Desktop (JVM):
 ## Roadmap
 
 - [ ] Profile settings (both platforms)
-- [ ] Home screen layout (both platforms - currently an empty stub on each)
+- [x] Home screen layout (both platforms - currently an empty stub on each)
 - [ ] Playlist creation
 - [x] Subsonic/Navidrome login & session persistence
 - [x] Playback, with seeking, volume, and a progress bar (mpv-backed on
