@@ -22,7 +22,7 @@ import xyz.skifty.mani.ui.screens.home.components.HomeShelf
 
 // How many songs each shelf loads/shows - matches getRandomSongs' own size param, and doubles as
 // the sample size for the client-side shuffle of the (usually much larger) Liked Songs shelf.
-private const val HOME_SHELF_SONG_COUNT = 15
+private const val HOME_SHELF_SONG_COUNT = 30
 
 @Composable
 fun HomeScreen(apiService: ApiService, playbackQueue: PlaybackQueue) {
