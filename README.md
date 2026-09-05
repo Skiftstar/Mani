@@ -9,23 +9,6 @@ Multiplatform and Compose Multiplatform. Desktop playback is driven by
 Linux. Android playback runs on Media3/ExoPlayer as a background
 service.
 
-## Installation
-
-Prebuilt packages are attached to each [GitHub Release](../../releases):
-
-| Platform | Format |
-| --- | --- |
-| Windows | `.msi` installer |
-| Linux (Debian/Ubuntu and derivatives) | `.deb` |
-| Linux (any distro) | `.AppImage` |
-| Arch Linux (AUR) | TODO - not published yet |
-| Android | TODO - not published yet (build a debug APK from source, see below) |
-
-Linux `.deb` installs declare `mpv` as a package dependency, so your package
-manager installs it automatically alongside Mani if it isn't already
-present. The Windows `.msi` bundles its own copy of `mpv` directly, since
-Windows has no equivalent system package manager to depend on it through.
-
 ## Building from source
 
 **Prerequisites** (all platforms): JDK 17 or newer. For Android specifically,
