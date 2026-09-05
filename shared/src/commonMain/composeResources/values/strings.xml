@@ -32,6 +32,7 @@
 
     <!-- Profile screen (Android) -->
     <string name="profile_logout_button">Log Out</string>
+    <string name="profile_show_visualizer_label">Show audio visualizer</string>
 
     <!-- Now Playing screen (Android) -->
     <string name="cd_collapse_now_playing">Collapse</string>

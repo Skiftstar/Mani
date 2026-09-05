@@ -35,8 +35,10 @@ import xyz.skifty.mani.media.AudioPlayer
 import xyz.skifty.mani.media.PlaybackQueue
 import xyz.skifty.mani.media.PlaylistLibrary
 import xyz.skifty.mani.media.SongInfo
+import xyz.skifty.mani.media.VisualizerState
 import xyz.skifty.mani.ui.components.nowplaying.components.ProgressSlider
 import xyz.skifty.mani.ui.screens.nowplaying.components.AlbumArt
+import xyz.skifty.mani.ui.screens.nowplaying.components.AudioVisualizer
 import xyz.skifty.mani.ui.screens.nowplaying.components.NowPlayingControls
 import xyz.skifty.mani.ui.screens.nowplaying.components.NowPlayingTitleRow
 
@@ -49,8 +51,9 @@ private const val SWIPE_UP_THRESHOLD_FRACTION = 0.12f
 // (or title) ending up wider than the cover art.
 private val NOW_PLAYING_HORIZONTAL_MARGIN = 32.dp
 
-/** The full-screen Now Playing player - cover art, title/artist with a like toggle, progress bar,
- *  and shuffle/previous/play-pause/next/loop controls. Reached from MiniPlayerBar's tap target
+/** The full-screen Now Playing player - cover art (or, if [showVisualizer] is on, an audio
+ *  visualizer in its place - see ProfileScreen's toggle), title/artist with a like toggle, progress
+ *  bar, and shuffle/previous/play-pause/next/loop controls. Reached from MiniPlayerBar's tap target
  *  via an animated expand transition (see AndroidApp.kt). Minimized back to wherever the user was
  *  via the system back gesture/button ([onCollapse]) - there's no on-screen minimize button.
  *  Swiping up instead navigates to the current queue's playlist ([onSwipeUp]), with the whole
@@ -62,6 +65,8 @@ fun NowPlayingScreen(
     activeSongInfo: SongInfo,
     playbackQueue: PlaybackQueue,
     playlistLibrary: PlaylistLibrary,
+    showVisualizer: Boolean,
+    visualizerState: VisualizerState,
     onCollapse: () -> Unit,
     onSwipeUp: () -> Unit,
     // Applied by AndroidApp.kt to pair this screen with MiniPlayerBar's own root via a matching
@@ -105,7 +110,11 @@ fun NowPlayingScreen(
             },
         verticalArrangement = Arrangement.Center,
     ) {
-        AlbumArt(coverArtUrl = activeSongInfo.songCoverArtUrl)
+        if (showVisualizer) {
+            AudioVisualizer(visualizerState = visualizerState)
+        } else {
+            AlbumArt(coverArtUrl = activeSongInfo.songCoverArtUrl)
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 

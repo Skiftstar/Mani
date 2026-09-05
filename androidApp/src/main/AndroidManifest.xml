@@ -6,6 +6,10 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Required by android.media.audiofx.Visualizer for the Now Playing audio visualizer, even
+         though it only ever inspects this app's own already-playing audio session, never the
+         microphone - the platform enforces this permission unconditionally. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <application
         android:name=".ManiApplication"

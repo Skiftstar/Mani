@@ -1,5 +1,7 @@
 package xyz.skifty.mani.media
 
+import android.media.AudioManager
+import android.util.Log
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.Player
@@ -8,6 +10,8 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionResult
 import org.koin.android.ext.android.inject
+
+private const val TAG = "PlaybackService"
 
 /** Owns the single ExoPlayer instance actually doing playback, as a foreground service so it
  *  keeps running whether or not any UI/MediaController is currently attached - Android's answer
@@ -25,13 +29,16 @@ import org.koin.android.ext.android.inject
 class PlaybackService : MediaSessionService() {
 
     private val playbackQueue: PlaybackQueue by inject()
+    private val visualizerState: VisualizerState by inject()
 
     private lateinit var mediaSession: MediaSession
+    private lateinit var player: ExoPlayer
+    private lateinit var audioSessionVisualizer: AudioSessionVisualizer
 
     override fun onCreate() {
         super.onCreate()
 
-        val player = ExoPlayer.Builder(this)
+        player = ExoPlayer.Builder(this)
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setUsage(C.USAGE_MEDIA)
@@ -42,6 +49,29 @@ class PlaybackService : MediaSessionService() {
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .build()
 
+        audioSessionVisualizer = AudioSessionVisualizer(
+            context = this,
+            visualizerState = visualizerState,
+        )
+
+        // Generated and assigned ourselves, rather than waiting on Player.Listener's
+        // onAudioSessionIdChanged - ExoPlayer typically auto-assigns its own session id during
+        // construction itself (i.e. inside the ExoPlayer.Builder(...).build() call above), which
+        // would fire that one-shot callback before addListener() below could ever be reached,
+        // silently missing it forever. Assigning our own id upfront sidesteps that race entirely -
+        // we already know the id, no callback needed to learn it.
+        val audioSessionId = getSystemService(AudioManager::class.java)
+            ?.generateAudioSessionId()
+            ?: C.AUDIO_SESSION_ID_UNSET
+        if (audioSessionId == C.AUDIO_SESSION_ID_UNSET) {
+            Log.w(TAG, "Could not generate an audio session id - visualizer will stay idle.")
+        } else {
+            player.setAudioSessionId(audioSessionId)
+            audioSessionVisualizer.attach(audioSessionId)
+        }
+
+        player.addListener(VisualizerCaptureListener(audioSessionVisualizer))
+
         mediaSession = MediaSession.Builder(this, player)
             .setCallback(PlaybackSessionCallback(playbackQueue))
             .build()
@@ -50,9 +80,24 @@ class PlaybackService : MediaSessionService() {
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession = mediaSession
 
     override fun onDestroy() {
+        audioSessionVisualizer.release()
         mediaSession.player.release()
         mediaSession.release()
         super.onDestroy()
+    }
+
+}
+
+/** Ties [AudioSessionVisualizer]'s data capture to actual playback state - a plain Player.Listener,
+ *  attached directly to the player (not routed through AndroidAudioPlayer's MediaController, which
+ *  never exposes audioSessionId), since this is one-way telemetry off the real player, not
+ *  playback control. */
+private class VisualizerCaptureListener(
+    private val audioSessionVisualizer: AudioSessionVisualizer,
+) : Player.Listener {
+
+    override fun onIsPlayingChanged(isPlaying: Boolean) {
+        audioSessionVisualizer.setCaptureEnabled(isPlaying)
     }
 
 }

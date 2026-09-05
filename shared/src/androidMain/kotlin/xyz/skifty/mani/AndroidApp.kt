@@ -21,6 +21,8 @@ import androidx.compose.ui.Modifier
 import mani.shared.generated.resources.Res
 import mani.shared.generated.resources.playlist_liked_songs_title
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
+import xyz.skifty.mani.media.VisualizerState
 import xyz.skifty.mani.ui.components.BottomNavBar
 import xyz.skifty.mani.ui.components.nowplaying.MiniPlayerBar
 import xyz.skifty.mani.ui.screens.Screen
@@ -52,6 +54,10 @@ fun AndroidApp() {
     val playbackQueue = appShellState.playbackQueue
     val playlistLibrary = appShellState.playlistLibrary
     val apiService = appShellState.apiService
+    // Android-only readout of the actual audio session's FFT data - not part of AppShellState
+    // itself since it's never bound on desktop (see VisualizerState/AudioSessionVisualizer's own
+    // doc comments).
+    val visualizerState = koinInject<VisualizerState>()
 
     // Which screen to return to on collapse - the one that was active right before Now Playing
     // was opened, same "remember what came before, restore it" shape as JvmApp's own
@@ -162,6 +168,8 @@ fun AndroidApp() {
                         )
 
                         Screen.Profile -> ProfileScreen(
+                            showVisualizer = appShellState.showVisualizer,
+                            onShowVisualizerChange = appShellState::setShowVisualizer,
                             onLogout = { appShellState.logout() },
                         )
 
@@ -228,6 +236,8 @@ fun AndroidApp() {
                             activeSongInfo = activeSongInfo,
                             playbackQueue = playbackQueue,
                             playlistLibrary = playlistLibrary,
+                            showVisualizer = appShellState.showVisualizer,
+                            visualizerState = visualizerState,
                             onCollapse = ::collapseNowPlaying,
                             onSwipeUp = ::navigateToQueueSource,
                             cardModifier = Modifier.sharedBounds(

@@ -35,3 +35,7 @@ val SliderFill = Color(0xFF1DB954)
 // Would technically be for stuff on top of the slider fill
 // but never used, just there for completeness of scheme tbh
 val OnSliderFill = Color(0xFF00210B)
+
+// The two counter-clockwise-rotating rings on the Now Playing audio visualizer. The clockwise
+// third ring reuses MainText (white) instead of getting its own color here.
+val VisualizerAccent = Color(0xFFFF8A3D)

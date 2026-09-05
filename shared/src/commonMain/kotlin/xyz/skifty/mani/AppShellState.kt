@@ -37,8 +37,18 @@ class AppShellState(
     var screen by mutableStateOf<Screen?>(null)
         internal set
 
+    // Whether the Now Playing screen's audio visualizer should show in place of cover art -
+    // Android-only feature, but the preference itself is plain platform-agnostic data, so it lives
+    // here alongside mani_volume/mani_last_song_id rather than needing its own state holder.
+    var showVisualizer by mutableStateOf(false)
+        internal set
+
     fun navigate(target: Screen) {
         screen = target
+    }
+
+    fun setShowVisualizer(enabled: Boolean) {
+        showVisualizer = enabled
     }
 
     fun logout() {
@@ -142,6 +152,18 @@ fun rememberAppShellState(): AppShellState {
 
     LaunchedEffect(audioPlayer.volume) {
         runCatching { appPreferences.save("mani_volume", audioPlayer.volume.toString()) }
+    }
+
+    LaunchedEffect(Unit) {
+        runCatching {
+            appPreferences.get("mani_show_visualizer")
+                ?.toBooleanStrictOrNull()
+                ?.let { savedShowVisualizer -> state.showVisualizer = savedShowVisualizer }
+        }
+    }
+
+    LaunchedEffect(state.showVisualizer) {
+        runCatching { appPreferences.save("mani_show_visualizer", state.showVisualizer.toString()) }
     }
 
     // Guards against scrobbling the same song twice: a natural finish (trackFinishedCount, below)
