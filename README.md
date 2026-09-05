@@ -1,7 +1,14 @@
-# Mani
-
+# AI Usage
 > [!WARNING]
 > This whole app is pretty much written by Claude. I wanted to get it done pretty quickly just as a personal project, so I can finally move away from ytm/spotify. I did read over the code and while it's pretty messy, I chose to leave it as is, since it's not meant to be developed further anyways.
+
+I personally hate fully relying on AI (or relying on it at all if I'm completely honest), but with the feature list I wanted, I didn't want to spend 2 - 3 months to fully grasp everything just for an app that is only made for my own personal use...
+
+Had I more freetime I would've probably coded it myself, but we truly live in a society, eh?
+
+Anyways, the rest of the README is by Claude, so have fun with that.
+
+# Mani
 
 A Subsonic/Navidrome music client for desktop and Android, built with Kotlin
 Multiplatform and Compose Multiplatform. Desktop playback is driven by
@@ -107,3 +114,4 @@ This is a Kotlin Multiplatform project targeting Android and Desktop (JVM):
       playing, and a full-screen Now Playing view that expands from it with
       an animated transition (swipe up from there to jump to the playing
       song's playlist, or back-gesture to collapse)
+- [x] Android Audio Visualizer (toggleable in profile screen)
