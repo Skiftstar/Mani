@@ -16,6 +16,23 @@ Multiplatform and Compose Multiplatform. Desktop playback is driven by
 Linux. Android playback runs on Media3/ExoPlayer as a background
 service.
 
+## Screenshots
+
+**Desktop**
+
+<p>
+  <img src="screenshots/home_screen.jpg" alt="Desktop home screen" width="49%">
+  <img src="screenshots/liked_songs.jpg" alt="Desktop Liked Songs playlist view" width="49%">
+</p>
+
+**Android**
+
+<p>
+  <img src="screenshots/home_screen_mobile.jpg" alt="Android home screen" width="32%">
+  <img src="screenshots/liked_songs_mobile.jpg" alt="Android Liked Songs playlist view" width="32%">
+  <img src="screenshots/now_playing_mobile.jpg" alt="Android Now Playing screen" width="32%">
+</p>
+
 ## Building from source
 
 **Prerequisites** (all platforms): JDK 17 or newer. For Android specifically,
