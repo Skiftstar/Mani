@@ -94,7 +94,7 @@ This is a Kotlin Multiplatform project targeting Android and Desktop (JVM):
 
 - [ ] Profile settings (both platforms)
 - [x] Home screen layout (both platforms - currently an empty stub on each)
-- [ ] Playlist creation
+- [x] Playlist creation
 - [x] Subsonic/Navidrome login & session persistence
 - [x] Playback, with seeking, volume, and a progress bar (mpv-backed on
       desktop; Media3/ExoPlayer-backed on Android, as a foreground service
@@ -106,6 +106,7 @@ This is a Kotlin Multiplatform project targeting Android and Desktop (JVM):
 - [x] Playlist browsing, including each playlist's total song count/runtime
 - [x] song context menu play, add to queue,
       like/unlike, add to/remove from playlist
+- [x] playlist context menu play, delete
 - [x] Scrobbling
 - [x] Global Space-to-pause keybind (desktop only)
 - [x] Windows/Linux packaging (`.msi`, `.deb`, `.AppImage`, Arch `PKGBUILD`)

@@ -372,4 +372,19 @@ class ApiService {
         }
     }
 
+    /** Permanently deletes the playlist identified by [playlistId] - the songs themselves aren't
+     *  touched, only the playlist entity. */
+    suspend fun deletePlaylist(playlistId: String): Result<Unit> {
+        return try {
+            val result = httpClient.get(buildUrl("/rest/deletePlaylist", mapOf("id" to playlistId)))
+            if (result.status.isSuccess()) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Server returned HTTP ${result.status.value}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception("Could not reach server: ${e.message}", e))
+        }
+    }
+
 }

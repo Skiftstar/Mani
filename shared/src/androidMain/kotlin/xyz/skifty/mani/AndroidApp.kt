@@ -162,6 +162,7 @@ fun AndroidApp() {
                         Screen.Library -> PlaylistLibraryListScreen(
                             apiService = apiService,
                             playlistLibrary = playlistLibrary,
+                            playbackQueue = playbackQueue,
                             onPlaylistClick = { playlist ->
                                 appShellState.navigate(Screen.Playlist(playlist.id, playlist.name))
                             },

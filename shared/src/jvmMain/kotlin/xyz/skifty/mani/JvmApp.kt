@@ -246,10 +246,17 @@ fun JvmApp() {
                                 Sidebar(
                                     apiService = apiService,
                                     playlistLibrary = playlistLibrary,
+                                    playbackQueue = playbackQueue,
                                     onHomeClick = { navigate(Screen.Home) },
                                     onLikedSongsClick = { navigate(Screen.LikedSongs) },
                                     onPlaylistClick = { playlist ->
                                         navigate(Screen.Playlist(playlist.id, playlist.name))
+                                    },
+                                    onPlaylistDeleted = { deletedPlaylistId ->
+                                        val currentScreen = appShellState.screen
+                                        if (currentScreen is Screen.Playlist && currentScreen.playlistId == deletedPlaylistId) {
+                                            navigate(Screen.Home)
+                                        }
                                     },
                                 )
                             }

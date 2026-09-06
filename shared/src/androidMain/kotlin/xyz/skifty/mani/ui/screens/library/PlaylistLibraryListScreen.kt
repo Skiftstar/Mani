@@ -2,6 +2,7 @@ package xyz.skifty.mani.ui.screens.library
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,15 +24,20 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import androidx.compose.ui.text.font.FontWeight
+import kotlinx.coroutines.launch
 import mani.shared.generated.resources.Res
 import mani.shared.generated.resources.cd_create_playlist
 import mani.shared.generated.resources.cd_playlist_cover
@@ -40,9 +46,12 @@ import mani.shared.generated.resources.playlist_song_count
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import xyz.skifty.mani.api.ApiService
+import xyz.skifty.mani.media.PlaybackQueue
 import xyz.skifty.mani.media.PlaylistInfo
 import xyz.skifty.mani.media.PlaylistLibrary
 import xyz.skifty.mani.ui.components.CreatePlaylistDialog
+import xyz.skifty.mani.ui.components.DeletePlaylistDialog
+import xyz.skifty.mani.ui.components.PlaylistContextMenuHost
 
 /** Android's "Library" tab - the full-width equivalent of desktop's narrow icon-only Sidebar
  *  playlist rail, reading from the same [playlistLibrary] cache. */
@@ -50,6 +59,7 @@ import xyz.skifty.mani.ui.components.CreatePlaylistDialog
 fun PlaylistLibraryListScreen(
     apiService: ApiService,
     playlistLibrary: PlaylistLibrary,
+    playbackQueue: PlaybackQueue,
     onPlaylistClick: (PlaylistInfo) -> Unit,
 ) {
     val playlists = playlistLibrary.playlists ?: emptyList()
@@ -84,6 +94,9 @@ fun PlaylistLibraryListScreen(
         items(playlists) { playlist ->
             PlaylistLibraryRow(
                 playlist = playlist,
+                apiService = apiService,
+                playlistLibrary = playlistLibrary,
+                playbackQueue = playbackQueue,
                 onClick = { onPlaylistClick(playlist) },
             )
         }
@@ -99,11 +112,28 @@ fun PlaylistLibraryListScreen(
 }
 
 @Composable
-private fun PlaylistLibraryRow(playlist: PlaylistInfo, onClick: () -> Unit) {
+private fun PlaylistLibraryRow(
+    playlist: PlaylistInfo,
+    apiService: ApiService,
+    playlistLibrary: PlaylistLibrary,
+    playbackQueue: PlaybackQueue,
+    onClick: () -> Unit,
+) {
+    val coroutineScope = rememberCoroutineScope()
+    val hapticFeedback = LocalHapticFeedback.current
+    var contextMenuPosition by remember { mutableStateOf<Offset?>(null) }
+    var showDeleteConfirm by remember { mutableStateOf(false) }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = {
+                    hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                    contextMenuPosition = Offset.Zero
+                },
+            )
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -130,5 +160,27 @@ private fun PlaylistLibraryRow(playlist: PlaylistInfo, onClick: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+
+    PlaylistContextMenuHost(
+        positionInWindow = contextMenuPosition,
+        onDismissRequest = { contextMenuPosition = null },
+        playlist = playlist,
+        onPlay = {
+            coroutineScope.launch {
+                val details = apiService.getPlaylist(playlist.id)
+                playbackQueue.start(details.songs, 0, playlist.id)
+            }
+        },
+        onDeleteRequest = { showDeleteConfirm = true },
+    )
+
+    if (showDeleteConfirm) {
+        DeletePlaylistDialog(
+            apiService = apiService,
+            playlistLibrary = playlistLibrary,
+            playlist = playlist,
+            onDismissRequest = { showDeleteConfirm = false },
+        )
     }
 }

@@ -100,7 +100,15 @@
     <string name="create_playlist_name_label">Playlist name</string>
     <string name="create_playlist_confirm_button">Create</string>
     <string name="create_playlist_cancel_button">Cancel</string>
-    <string name="create_playlist_error">Couldn\'t create playlist. Try again.</string>
+    <string name="create_playlist_error">Couldn't create playlist. Try again.</string>
+
+    <!-- Delete playlist dialog -->
+    <string name="playlist_context_menu_delete">Delete</string>
+    <string name="delete_playlist_dialog_title">Delete Playlist</string>
+    <string name="delete_playlist_message">Delete "%1$s"? This can't be undone.</string>
+    <string name="delete_playlist_confirm_button">Delete</string>
+    <string name="delete_playlist_cancel_button">Cancel</string>
+    <string name="delete_playlist_error">Couldn't delete playlist. Try again.</string>
 
     <!-- Title bar -->
     <string name="cd_minimize_window">Minimize</string>
