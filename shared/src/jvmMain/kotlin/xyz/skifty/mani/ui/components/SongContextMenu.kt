@@ -35,7 +35,7 @@ import mani.shared.generated.resources.context_menu_remove_from_playlist
 import mani.shared.generated.resources.context_menu_unlike
 import org.jetbrains.compose.resources.stringResource
 import xyz.skifty.mani.api.ApiService
-import xyz.skifty.mani.ext.contextMenuContainer
+import xyz.skifty.mani.ext.popupContainer
 import xyz.skifty.mani.media.PlaylistInfo
 import xyz.skifty.mani.media.PlaylistLibrary
 import xyz.skifty.mani.media.SongInfo
@@ -83,7 +83,7 @@ fun SongContextMenu(
             // stretch to the full window width instead of hugging its content.
             modifier = Modifier.width(IntrinsicSize.Max),
             shape = MaterialTheme.shapes.extraSmall,
-            color = MaterialTheme.colorScheme.contextMenuContainer,
+            color = MaterialTheme.colorScheme.popupContainer,
             tonalElevation = 3.dp,
             shadowElevation = 3.dp,
         ) {

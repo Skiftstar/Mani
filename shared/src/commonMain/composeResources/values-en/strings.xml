@@ -22,4 +22,12 @@
     <string name="home_liked_random_title">From your Liked Songs</string>
     <string name="cd_shelf_scroll_left">Scroll left</string>
     <string name="cd_shelf_scroll_right">Scroll right</string>
+
+    <!-- Create playlist dialog -->
+    <string name="cd_create_playlist">Create playlist</string>
+    <string name="create_playlist_dialog_title">Create Playlist</string>
+    <string name="create_playlist_name_label">Playlist name</string>
+    <string name="create_playlist_confirm_button">Create</string>
+    <string name="create_playlist_cancel_button">Cancel</string>
+    <string name="create_playlist_error">Couldn\'t create playlist. Try again.</string>
 </resources>

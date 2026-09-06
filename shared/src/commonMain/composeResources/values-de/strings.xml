@@ -94,6 +94,14 @@
     <string name="context_menu_remove_from_playlist">Aus Playlist entfernen</string>
     <string name="context_menu_no_playlists">Du hast noch keine Playlists</string>
 
+    <!-- Create playlist dialog -->
+    <string name="cd_create_playlist">Playlist erstellen</string>
+    <string name="create_playlist_dialog_title">Playlist erstellen</string>
+    <string name="create_playlist_name_label">Playlistname</string>
+    <string name="create_playlist_confirm_button">Erstellen</string>
+    <string name="create_playlist_cancel_button">Abbrechen</string>
+    <string name="create_playlist_error">Playlist konnte nicht erstellt werden. Bitte versuche es erneut.</string>
+
     <!-- Title bar -->
     <string name="cd_minimize_window">Minimieren</string>
     <string name="cd_maximize_window">Maximieren</string>

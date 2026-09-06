@@ -344,4 +344,32 @@ class ApiService {
         }
     }
 
+    /** Creates a brand new, empty playlist named [name]. Uses `createPlaylist` with only a
+     *  `name` param (no `playlistId`) - the same endpoint overwrites an *existing* playlist's
+     *  song list entirely if a `playlistId` is passed instead, which is exactly what
+     *  [addSongToPlaylist]'s doc comment warns against; omitting it here is what makes this call
+     *  safe. */
+    suspend fun createPlaylist(name: String): Result<PlaylistInfo> {
+        return try {
+            val result = httpClient.get(buildUrl("/rest/createPlaylist", mapOf("name" to name)))
+            if (!result.status.isSuccess()) {
+                return Result.failure(Exception("Server returned HTTP ${result.status.value}"))
+            }
+            val responsePlaylist = result.body<SubsonicResponseWrapper>().response.playlist
+                ?: return Result.failure(Exception("Server did not return the created playlist"))
+            Result.success(
+                PlaylistInfo(
+                    id = responsePlaylist.id,
+                    name = responsePlaylist.name,
+                    songCount = responsePlaylist.songCount,
+                    coverArtUrl = responsePlaylist.coverArt?.let { coverArtId ->
+                        buildUrl("/rest/getCoverArt", mapOf("id" to coverArtId, "size" to "300"))
+                    },
+                ),
+            )
+        } catch (e: Exception) {
+            Result.failure(Exception("Could not reach server: ${e.message}", e))
+        }
+    }
+
 }

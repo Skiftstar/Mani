@@ -28,7 +28,7 @@ import mani.shared.generated.resources.Res
 import mani.shared.generated.resources.context_menu_no_playlists
 import org.jetbrains.compose.resources.stringResource
 import xyz.skifty.mani.api.ApiService
-import xyz.skifty.mani.ext.contextMenuContainer
+import xyz.skifty.mani.ext.popupContainer
 import xyz.skifty.mani.media.PlaylistInfo
 import xyz.skifty.mani.media.PlaylistLibrary
 import xyz.skifty.mani.ui.components.util.FixedPositionProvider
@@ -69,7 +69,7 @@ fun AddToPlaylistSubmenu(
                 .onPointerEvent(PointerEventType.Enter) { onHoverChanged(true) }
                 .onPointerEvent(PointerEventType.Exit) { onHoverChanged(false) },
             shape = MaterialTheme.shapes.extraSmall,
-            color = MaterialTheme.colorScheme.contextMenuContainer,
+            color = MaterialTheme.colorScheme.popupContainer,
             tonalElevation = 3.dp,
             shadowElevation = 3.dp,
         ) {

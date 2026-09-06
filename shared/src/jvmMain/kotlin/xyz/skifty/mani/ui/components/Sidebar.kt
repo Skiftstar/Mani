@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
@@ -30,6 +31,10 @@ import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import mani.shared.generated.resources.Res
 import mani.shared.generated.resources.cd_albums
+import mani.shared.generated.resources.cd_create_playlist
 import mani.shared.generated.resources.cd_home
 import mani.shared.generated.resources.cd_liked_songs
 import org.jetbrains.compose.resources.stringResource
@@ -60,6 +66,7 @@ fun Sidebar(
     // playlist's auto-derived cover art) is picked up here automatically too, since it's the same
     // Compose state either way.
     val playlists = playlistLibrary.playlists ?: emptyList()
+    var showCreatePlaylistDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         playlistLibrary.ensureLoaded(apiService)
@@ -85,6 +92,12 @@ fun Sidebar(
                 Icon(
                     imageVector = Icons.Filled.Favorite,
                     contentDescription = stringResource(Res.string.cd_liked_songs),
+                )
+            }
+            IconButton(onClick = { showCreatePlaylistDialog = true }) {
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = stringResource(Res.string.cd_create_playlist),
                 )
             }
             LazyColumn(
@@ -121,5 +134,13 @@ fun Sidebar(
             }
         }
         VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+    }
+
+    if (showCreatePlaylistDialog) {
+        CreatePlaylistDialog(
+            apiService = apiService,
+            playlistLibrary = playlistLibrary,
+            onDismissRequest = { showCreatePlaylistDialog = false },
+        )
     }
 }
