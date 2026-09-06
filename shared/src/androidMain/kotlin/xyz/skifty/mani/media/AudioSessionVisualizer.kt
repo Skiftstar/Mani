@@ -103,6 +103,10 @@ class AudioSessionVisualizer(
     private var capturing = false
     private var hasLoggedFirstFrame = false
 
+    // The most recent real session id attach() was given, kept around so setCaptureEnabled() can
+    // retry attaching with it - see setCaptureEnabled()'s own doc comment for why that's needed.
+    private var lastAudioSessionId = C.AUDIO_SESSION_ID_UNSET
+
     private val spectrum = SpectrumAccumulator()
 
     private val captureListener = object : Visualizer.OnDataCaptureListener {
@@ -145,6 +149,7 @@ class AudioSessionVisualizer(
             Log.w(TAG, "attach() called with an unset audio session id - staying idle.")
             return
         }
+        lastAudioSessionId = audioSessionId
 
         val hasPermission = ContextCompat.checkSelfPermission(
             context,
@@ -181,10 +186,20 @@ class AudioSessionVisualizer(
     }
 
     /** Ties data capture to actual playback state - paused/stopped means no capture, matching what
-     *  [AndroidAudioPlayer]'s `isPlaying` already reflects to the UI. */
+     *  [AndroidAudioPlayer]'s `isPlaying` already reflects to the UI.
+     *
+     *  Also where a missed RECORD_AUDIO grant gets a second chance: [attach] only ever runs once,
+     *  right as [PlaybackService] starts up, and permission grants made afterward (e.g. toggling
+     *  the visualizer on in Profile mid-session) don't retroactively re-trigger it - nothing
+     *  observes that change. Retrying here, right as playback is about to (re)start, is what
+     *  actually picks a just-granted permission up, instead of leaving [visualizer] permanently
+     *  null until the app is fully restarted. */
     fun setCaptureEnabled(
         enabled: Boolean,
     ) {
+        if (enabled && visualizer == null && lastAudioSessionId != C.AUDIO_SESSION_ID_UNSET) {
+            attach(lastAudioSessionId)
+        }
         if (enabled == capturing) {
             return
         }
