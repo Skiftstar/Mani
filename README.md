@@ -104,8 +104,8 @@ This is a Kotlin Multiplatform project targeting Android and Desktop (JVM):
 - [x] Search
 - [x] Liked Songs
 - [x] Playlist browsing, including each playlist's total song count/runtime
-- [x] Right-click song context menu (desktop only - play, add to queue,
-      like/unlike, add to/remove from playlist)
+- [x] song context menu play, add to queue,
+      like/unlike, add to/remove from playlist
 - [x] Scrobbling
 - [x] Global Space-to-pause keybind (desktop only)
 - [x] Windows/Linux packaging (`.msi`, `.deb`, `.AppImage`, Arch `PKGBUILD`)
