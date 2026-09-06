@@ -1,7 +1,7 @@
 package xyz.skifty.mani.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -33,9 +33,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -62,7 +64,7 @@ import xyz.skifty.mani.media.SongInfo
  *  thumbnail + title/artist, quality, duration, and a star/unstar toggle. Whenever this row's
  *  song is the one currently loaded in [audioPlayer] (per [activeSongInfo]), its text is tinted
  *  the accent color and clicking it toggles play/pause instead of restarting the track from the
- *  beginning. Right-clicking opens a context menu, on platforms that have one - see
+ *  beginning. Right-clicking (desktop) or long-pressing (touch) opens a context menu - see
  *  [SongContextMenuHost]. */
 @Composable
 fun PlaylistSongRow(
@@ -97,6 +99,7 @@ fun PlaylistSongRow(
     // right-click concept at all - see detectSecondaryClick's platform actuals.
     var rowPositionInWindow by remember { mutableStateOf(Offset.Zero) }
     var contextMenuPosition by remember { mutableStateOf<Offset?>(null) }
+    val hapticFeedback = LocalHapticFeedback.current
 
     Box(
         modifier = modifier
@@ -108,13 +111,17 @@ fun PlaylistSongRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(
+                .combinedClickable(
                     onClick = {
                         if (isActive) {
                             audioPlayer.togglePlayPause()
                         } else {
                             onClick()
                         }
+                    },
+                    onLongClick = {
+                        hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                        contextMenuPosition = rowPositionInWindow
                     },
                 )
                 .hoverable(hoverInteractionSource)
