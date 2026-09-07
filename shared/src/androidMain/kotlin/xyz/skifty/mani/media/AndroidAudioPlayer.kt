@@ -113,7 +113,12 @@ class AndroidAudioPlayer(private val context: Context) : AudioPlayer {
 
     private fun captureTrackLeft(activeSongInfo: SongInfo) {
         activeSongInfo.songId?.let { songId ->
-            lastTrackLeft = TrackLeftEvent(songId, currentAccumulatedListenMs(), length())
+            lastTrackLeft = TrackLeftEvent(
+                songId = songId,
+                listenedMs = currentAccumulatedListenMs(),
+                durationMs = length(),
+                playThroughToken = playbackStartedCount,
+            )
             trackLeftCount++
         }
     }

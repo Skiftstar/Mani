@@ -11,4 +11,9 @@ data class TrackLeftEvent(
     val songId: String,
     val listenedMs: Long,
     val durationMs: Long,
+    // Snapshot of AudioPlayer.playbackStartedCount at the moment this event was captured, i.e. the
+    // token identifying the specific play-through being left behind. Lets AppShellState's dedup
+    // guard tell "the same play-through, reported twice" apart from "the same song, played again"
+    // (e.g. LoopMode.ONE replaying it) - songId alone can't, since both cases share it.
+    val playThroughToken: Int,
 )

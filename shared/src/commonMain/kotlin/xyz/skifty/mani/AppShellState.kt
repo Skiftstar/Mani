@@ -166,28 +166,41 @@ fun rememberAppShellState(): AppShellState {
         runCatching { appPreferences.save("mani_show_visualizer", state.showVisualizer.toString()) }
     }
 
-    // Guards against scrobbling the same song twice: a natural finish (trackFinishedCount, below)
-    // and the queue's subsequent auto-advance (which also raises trackLeftCount, since it goes
-    // through audioPlayer.play() like any other track change) would otherwise both try to
-    // scrobble the same just-completed song.
+    // Guards against scrobbling the same play-through twice: a natural finish (trackFinishedCount,
+    // below) and the queue's subsequent auto-advance (which also raises trackLeftCount, since it
+    // goes through audioPlayer.play() like any other track change) would otherwise both try to
+    // scrobble the same just-completed play-through. Keyed by songId *and*
+    // audioPlayer.playbackStartedCount (the per-play-through token) rather than songId alone, so
+    // LoopMode.ONE replaying the same song still gets scrobbled on every loop instead of only the
+    // first - songId alone can't tell "reported twice" apart from "played again".
     var lastScrobbledSongId by remember { mutableStateOf<String?>(null) }
+    var lastScrobbledPlayThrough by remember { mutableStateOf<Int?>(null) }
 
     // Subsonic doesn't enforce a minimum-listen rule itself, so we have to do it ourselves
-    suspend fun scrobbleIfNeeded(songId: String?, listenedMs: Long, durationMs: Long) {
-        if (songId == null || songId == lastScrobbledSongId || durationMs <= 0) {
+    suspend fun scrobbleIfNeeded(songId: String?, playThrough: Int, listenedMs: Long, durationMs: Long) {
+        if (songId == null || durationMs <= 0) {
+            return
+        }
+        if (songId == lastScrobbledSongId && playThrough == lastScrobbledPlayThrough) {
             return
         }
         // half the song or SCROLLBE_MIN_LISTEN_MS, whichever is less
         val thresholdMs = minOf(durationMs / 2, SCROBBLE_MIN_LISTEN_MS)
         if (listenedMs >= thresholdMs) {
             lastScrobbledSongId = songId
+            lastScrobbledPlayThrough = playThrough
             apiService.scrobble(songId)
         }
     }
 
     LaunchedEffect(audioPlayer.trackFinishedCount) {
         if (audioPlayer.trackFinishedCount > 0) {
-            scrobbleIfNeeded(activeSongInfo.songId, audioPlayer.listenedMs(), audioPlayer.length())
+            scrobbleIfNeeded(
+                activeSongInfo.songId,
+                audioPlayer.playbackStartedCount,
+                audioPlayer.listenedMs(),
+                audioPlayer.length(),
+            )
             playbackQueue.onTrackFinished()
         }
     }
@@ -195,7 +208,9 @@ fun rememberAppShellState(): AppShellState {
     // Scrobbles whatever song was just left behind - a skip, a previous, starting a different
     // playlist's queue, or an explicit stop - see AudioPlayer's captureTrackLeft implementations.
     LaunchedEffect(audioPlayer.trackLeftCount) {
-        audioPlayer.lastTrackLeft?.let { left -> scrobbleIfNeeded(left.songId, left.listenedMs, left.durationMs) }
+        audioPlayer.lastTrackLeft?.let { left ->
+            scrobbleIfNeeded(left.songId, left.playThroughToken, left.listenedMs, left.durationMs)
+        }
     }
 
     return state

@@ -171,7 +171,12 @@ class DesktopAudioPlayer : AudioPlayer {
 
     private fun captureTrackLeft(activeSongInfo: SongInfo) {
         activeSongInfo.songId?.let { songId ->
-            lastTrackLeft = TrackLeftEvent(songId, currentAccumulatedListenMs(), cachedDurationMs)
+            lastTrackLeft = TrackLeftEvent(
+                songId = songId,
+                listenedMs = currentAccumulatedListenMs(),
+                durationMs = cachedDurationMs,
+                playThroughToken = playbackStartedCount,
+            )
             trackLeftCount++
         }
     }
