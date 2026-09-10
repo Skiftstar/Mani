@@ -127,6 +127,7 @@ fun NowPlayingScreen(
                 activeSongInfo = activeSongInfo,
                 apiService = apiService,
                 playlistLibrary = playlistLibrary,
+                playbackQueue = playbackQueue,
             )
         }
 

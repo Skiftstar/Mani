@@ -56,7 +56,7 @@ fun PlaylistSongTable(
 
     fun toggleStar(songInfo: SongInfo) {
         coroutineScope.launch {
-            apiService.toggleStar(songInfo, playlistLibrary)
+            apiService.toggleStar(songInfo, playlistLibrary, playbackQueue)
         }
     }
 

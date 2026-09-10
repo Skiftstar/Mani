@@ -25,18 +25,24 @@ import mani.shared.generated.resources.unknown_title
 import org.jetbrains.compose.resources.stringResource
 import xyz.skifty.mani.api.ApiService
 import xyz.skifty.mani.ext.toggleStar
+import xyz.skifty.mani.media.PlaybackQueue
 import xyz.skifty.mani.media.PlaylistLibrary
 import xyz.skifty.mani.media.SongInfo
 
 /** Title + artist (stacked), with a like toggle to the right, vertically centered against both
  *  lines together rather than either one alone. */
 @Composable
-fun NowPlayingTitleRow(activeSongInfo: SongInfo, apiService: ApiService, playlistLibrary: PlaylistLibrary) {
+fun NowPlayingTitleRow(
+    activeSongInfo: SongInfo,
+    apiService: ApiService,
+    playlistLibrary: PlaylistLibrary,
+    playbackQueue: PlaybackQueue,
+) {
     val coroutineScope = rememberCoroutineScope()
 
     fun toggleStar() {
         coroutineScope.launch {
-            apiService.toggleStar(activeSongInfo, playlistLibrary)
+            apiService.toggleStar(activeSongInfo, playlistLibrary, playbackQueue)
         }
     }
 

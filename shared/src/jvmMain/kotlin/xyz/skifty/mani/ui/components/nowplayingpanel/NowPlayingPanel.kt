@@ -71,6 +71,7 @@ fun NowPlayingPanel(
                     activeSongInfo = activeSongInfo,
                     apiService = apiService,
                     playlistLibrary = playlistLibrary,
+                    playbackQueue = playbackQueue,
                 )
                 Spacer(Modifier.height(12.dp))
                 PanelSongDetails(songInfo = activeSongInfo)

@@ -25,6 +25,7 @@ import mani.shared.generated.resources.unknown_title
 import org.jetbrains.compose.resources.stringResource
 import xyz.skifty.mani.api.ApiService
 import xyz.skifty.mani.ext.toggleStar
+import xyz.skifty.mani.media.PlaybackQueue
 import xyz.skifty.mani.media.PlaylistLibrary
 import xyz.skifty.mani.media.SongInfo
 
@@ -35,6 +36,7 @@ fun PanelTrackHeader(
     activeSongInfo: SongInfo,
     apiService: ApiService,
     playlistLibrary: PlaylistLibrary,
+    playbackQueue: PlaybackQueue,
     modifier: Modifier = Modifier,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -63,7 +65,7 @@ fun PanelTrackHeader(
         IconButton(
             onClick = {
                 coroutineScope.launch {
-                    apiService.toggleStar(activeSongInfo, playlistLibrary)
+                    apiService.toggleStar(activeSongInfo, playlistLibrary, playbackQueue)
                 }
             },
         ) {

@@ -203,6 +203,18 @@ class PlaybackQueue(
         playOrder = playOrder.toMutableList().apply { removeAt(position) }
     }
 
+    /** Patches the starred flag on whichever of [songs] shares [songId], if any - keeps a star
+     *  toggle (which only ever mutates the specific SongInfo instance it's given, e.g.
+     *  activeSongInfo) from being silently undone the next time this song is replayed from the
+     *  queue's own, separate SongInfo instance - see [playCurrent]/[onTrackFinished]. */
+    fun updateStarred(
+        songId: String,
+        starred: Boolean,
+    ) {
+        songs.firstOrNull { song -> song.songId == songId }
+            ?.starred = starred
+    }
+
     /** Called when the current track finishes naturally - replays it if [LoopMode.ONE], otherwise
      *  behaves like [next]. */
     fun onTrackFinished() {

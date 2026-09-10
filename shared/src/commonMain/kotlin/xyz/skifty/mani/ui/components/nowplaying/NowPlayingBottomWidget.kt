@@ -141,7 +141,7 @@ fun NowPlayingBottomWidget(
                 IconButton(
                     onClick = {
                         coroutineScope.launch {
-                            apiService.toggleStar(activeSongInfo, playlistLibrary)
+                            apiService.toggleStar(activeSongInfo, playlistLibrary, playbackQueue)
                         }
                     },
                 ) {
