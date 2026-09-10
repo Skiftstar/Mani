@@ -19,6 +19,7 @@
     <string name="cd_playlist_cover">Playlist-Cover</string>
 
     <!-- Home screen -->
+    <string name="home_favorites_title">Deine Favoriten</string>
     <string name="home_random_songs_title">Zufällige Songs</string>
     <string name="home_liked_random_title">Aus deinen Lieblingssongs</string>
     <string name="cd_shelf_scroll_left">Nach links scrollen</string>

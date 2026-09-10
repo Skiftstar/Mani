@@ -19,6 +19,8 @@ import xyz.skifty.mani.models.ResponseSongInfo
 import xyz.skifty.mani.models.SubsonicResponseWrapper
 import xyz.skifty.mani.util.generateSalt
 import xyz.skifty.mani.util.md5Hex
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.days
 
 private const val API_VERSION = "1.16.1"
 private const val CLIENT_NAME = "mani"
@@ -264,6 +266,33 @@ class ApiService {
         }
 
         return songInfos
+    }
+
+    /** Top [count] most-played songs over the last 30 days, via the custom `getRecap` endpoint
+     *  this app's own Navidrome fork adds (see the README's Backend section) - not part of
+     *  standard Subsonic/Navidrome, so wrapped in try/catch (unlike the other list-returning
+     *  endpoints above) and degrades to an empty list on any failure, including a 404 from a
+     *  stock server that doesn't have it. Each `topSong` entry's `entry` is a full song object -
+     *  same shape [toSongInfo] already consumes elsewhere - so no secondary per-song fetch is
+     *  needed to get cover art/duration/etc. */
+    suspend fun getRecapTopSongs(count: Int): List<SongInfo> {
+        return try {
+            val to = Clock.System.now()
+            val from = to.minus(30.days)
+            val result = httpClient.get(
+                buildUrl(
+                    "/rest/getRecap",
+                    mapOf("from" to from.toString(), "to" to to.toString(), "count" to count.toString()),
+                ),
+            )
+            if (!result.status.isSuccess()) {
+                return emptyList()
+            }
+            result.body<SubsonicResponseWrapper>().response.recap?.topSong.orEmpty()
+                .map { topSong -> toSongInfo(topSong.entry) }
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 
     /** Stars [songId] server-side (makes it appear in getStarredSongs()/Liked Songs). */

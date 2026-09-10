@@ -18,6 +18,7 @@
     <string name="cd_close_queue">Close queue</string>
 
     <!-- Home screen -->
+    <string name="home_favorites_title">Your Favorites</string>
     <string name="home_random_songs_title">Random Songs</string>
     <string name="home_liked_random_title">From your Liked Songs</string>
     <string name="cd_shelf_scroll_left">Scroll left</string>

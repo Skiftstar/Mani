@@ -25,6 +25,12 @@ tracking; Mani sends real elapsed listen time (excluding paused time, unaffected
 that param on every scrobble. A stock Subsonic/Navidrome server just ignores the extra param, so
 this works unmodified against either.
 
+That same fork also adds a `getRecap` endpoint (top songs/artists and a taste profile over a date
+range), which powers the Home screen's "Your Favorites" shelf - your top 50 most-played songs
+over the last 30 days. This one's a genuine extra feature, not just an ignorable param: on a
+stock server the request fails and the shelf simply doesn't appear, with the rest of Home
+(Random Songs, Liked Songs) completely unaffected.
+
 ## Screenshots
 
 **Desktop**
@@ -120,6 +126,9 @@ This is a Kotlin Multiplatform project targeting Android and Desktop (JVM):
 
 - [ ] Profile settings (both platforms)
 - [x] Home screen layout (both platforms - currently an empty stub on each)
+- [x] Home screen "Your Favorites" shelf (top 50 most-played songs over the
+      last 30 days, via the custom Navidrome fork's `getRecap` endpoint - see
+      Backend)
 - [x] Playlist creation
 - [x] Subsonic/Navidrome login & session persistence
 - [x] Playback, with seeking, volume, and a progress bar (mpv-backed on

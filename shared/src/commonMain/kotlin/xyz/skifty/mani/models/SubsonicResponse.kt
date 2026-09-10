@@ -11,5 +11,6 @@ data class SubsonicResponse(
     val song: ResponseSongInfo? = null,
     val searchResult3: SearchResult3? = null,
     val randomSongs: RandomSongs? = null,
+    val recap: Recap? = null,
     val error: SubsonicError? = null,
 )
