@@ -19,6 +19,7 @@ import org.jetbrains.compose.resources.stringResource
 import xyz.skifty.mani.api.ApiService
 import xyz.skifty.mani.media.PlaybackQueue
 import xyz.skifty.mani.media.SongInfo
+import xyz.skifty.mani.ui.screens.home.components.FavoritesShelf
 import xyz.skifty.mani.ui.screens.home.components.HomeShelf
 
 // How many songs each shelf loads/shows - matches getRandomSongs' own size param, and doubles as
@@ -51,10 +52,11 @@ fun HomeScreen(apiService: ApiService, playbackQueue: PlaybackQueue) {
         modifier = Modifier.padding(vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        // Hides itself entirely (see HomeShelf's own empty-list handling) on a server without
-        // the custom getRecap endpoint - getRecapTopSongs() degrades to emptyList() rather than
-        // throwing, see its own doc comment.
-        HomeShelf(
+        // Hides itself entirely (see HomeShelf/FavoritesShelf's own empty-list handling) on a
+        // server without the custom getRecap endpoint - getRecapTopSongs() degrades to
+        // emptyList() rather than throwing, see its own doc comment. Android renders this one as
+        // a paginated 3x3 grid instead of HomeShelf's style - see FavoritesShelf's own actuals.
+        FavoritesShelf(
             title = stringResource(Res.string.home_favorites_title),
             songs = favoriteSongs,
             onSongClick = { index ->

@@ -57,7 +57,7 @@ fun HomeShelf(title: String, songs: List<SongInfo>, onSongClick: (index: Int) ->
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium,
+                style = homeShelfTitleStyle(),
                 modifier = Modifier.padding(horizontal = 16.dp),
             )
             if (showHomeShelfPageArrows) {
