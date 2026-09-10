@@ -16,6 +16,15 @@ Multiplatform and Compose Multiplatform. Desktop playback is driven by
 Linux. Android playback runs on Media3/ExoPlayer as a background
 service.
 
+## Backend
+
+Mani talks to any standard Subsonic/Navidrome server. It also optionally takes advantage of a
+custom Navidrome image - [Skiftstar/navidrome-recap](https://github.com/Skiftstar/navidrome-recap/tree/claude/custom-stats) -
+which extends the `scrobble` endpoint with an `msPlayed` param for precise listen-duration
+tracking; Mani sends real elapsed listen time (excluding paused time, unaffected by seeking) as
+that param on every scrobble. A stock Subsonic/Navidrome server just ignores the extra param, so
+this works unmodified against either.
+
 ## Screenshots
 
 **Desktop**

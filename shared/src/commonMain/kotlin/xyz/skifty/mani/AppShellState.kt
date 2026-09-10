@@ -189,7 +189,7 @@ fun rememberAppShellState(): AppShellState {
         if (listenedMs >= thresholdMs) {
             lastScrobbledSongId = songId
             lastScrobbledPlayThrough = playThrough
-            apiService.scrobble(songId)
+            apiService.scrobble(songId, listenedMs)
         }
     }
 

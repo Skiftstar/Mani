@@ -287,10 +287,21 @@ class ApiService {
 
     /** Records a completed listen of [songId] - updates play counts and reports to last.fm if
      *  configured server-side. `submission` is left at its Subsonic-default of true (an actual
-     *  listen), as opposed to false, which would instead post a transient "now playing" notice. */
-    suspend fun scrobble(songId: String): Result<Unit> {
+     *  listen), as opposed to false, which would instead post a transient "now playing" notice.
+     *  [msPlayed] is a custom extension this server build accepts for precise listen-duration
+     *  tracking - standard Subsonic servers simply ignore unknown params, so this stays safe to
+     *  send unconditionally. */
+    suspend fun scrobble(
+        songId: String,
+        msPlayed: Long,
+    ): Result<Unit> {
         return try {
-            val result = httpClient.get(buildUrl("/rest/scrobble", mapOf("id" to songId)))
+            val result = httpClient.get(
+                buildUrl(
+                    "/rest/scrobble",
+                    mapOf("id" to songId, "msPlayed" to msPlayed.toString()),
+                ),
+            )
             if (result.status.isSuccess()) {
                 Result.success(Unit)
             } else {
