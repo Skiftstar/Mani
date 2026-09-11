@@ -42,4 +42,5 @@
 
     <!-- Playlist screen -->
     <string name="playlist_search_placeholder">Search in playlist</string>
+    <string name="playlist_filtered_label">Filtered</string>
 </resources>

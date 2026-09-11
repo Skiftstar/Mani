@@ -51,6 +51,7 @@
     <string name="playlist_search_placeholder">In Playlist suchen</string>
     <string name="playlist_runtime_hours_minutes">%1$d Std. %2$d Min.</string>
     <string name="playlist_runtime_minutes_only">%1$d Min.</string>
+    <string name="playlist_filtered_label">Gefiltert</string>
 
     <!-- Now playing widget -->
     <string name="cd_album_art">Album-Cover</string>

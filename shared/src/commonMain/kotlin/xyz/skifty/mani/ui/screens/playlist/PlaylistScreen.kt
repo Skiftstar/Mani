@@ -91,6 +91,7 @@ fun PlaylistScreen(
                     audioPlayer = audioPlayer,
                     playbackQueue = playbackQueue,
                     playlistId = playlistId,
+                    filteredSongs = filteredSongs,
                     searchQuery = searchQuery,
                     onSearchQueryChange = { query -> searchQuery = query },
                     modifier = Modifier.padding(horizontal = 24.dp),

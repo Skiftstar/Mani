@@ -26,6 +26,7 @@ import coil3.compose.AsyncImage
 import mani.shared.generated.resources.Res
 import mani.shared.generated.resources.cd_playlist_cover
 import mani.shared.generated.resources.playlist_badge
+import mani.shared.generated.resources.playlist_filtered_label
 import mani.shared.generated.resources.playlist_runtime_hours_minutes
 import mani.shared.generated.resources.playlist_runtime_minutes_only
 import mani.shared.generated.resources.playlist_song_count
@@ -34,11 +35,19 @@ import org.jetbrains.compose.resources.stringResource
 import xyz.skifty.mani.ext.toHoursAndMinutes
 import xyz.skifty.mani.ext.totalRuntimeSeconds
 import xyz.skifty.mani.media.PlaylistDetails
+import xyz.skifty.mani.media.SongInfo
 
 /** Cover art (or a heart fallback for the Liked Songs pseudo-playlist) + a "Playlist" badge,
- *  large title, and owner (if the server reports one)/song count. */
+ *  large title, and owner (if the server reports one)/song count - the latter two computed from
+ *  [filteredSongs], not [details]' own full song list, so a search filter's stats stay accurate.
+ *  A "Filtered" line appears right below when [searchQuery] is non-blank. */
 @Composable
-fun PlaylistHeader(details: PlaylistDetails, modifier: Modifier = Modifier) {
+fun PlaylistHeader(
+    details: PlaylistDetails,
+    filteredSongs: List<SongInfo>,
+    searchQuery: String,
+    modifier: Modifier = Modifier,
+) {
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -89,10 +98,10 @@ fun PlaylistHeader(details: PlaylistDetails, modifier: Modifier = Modifier) {
 
             val songCount = pluralStringResource(
                 Res.plurals.playlist_song_count,
-                details.songs.size,
-                details.songs.size,
+                filteredSongs.size,
+                filteredSongs.size,
             )
-            val (runtimeHours, runtimeMinutes) = details.totalRuntimeSeconds().toHoursAndMinutes()
+            val (runtimeHours, runtimeMinutes) = filteredSongs.totalRuntimeSeconds().toHoursAndMinutes()
             val runtimeLabel = if (runtimeHours > 0) {
                 stringResource(Res.string.playlist_runtime_hours_minutes, runtimeHours, runtimeMinutes)
             } else {
@@ -105,6 +114,13 @@ fun PlaylistHeader(details: PlaylistDetails, modifier: Modifier = Modifier) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (searchQuery.isNotBlank()) {
+                Text(
+                    text = stringResource(Res.string.playlist_filtered_label),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }

@@ -31,6 +31,7 @@ import mani.shared.generated.resources.Res
 import mani.shared.generated.resources.cd_pause
 import mani.shared.generated.resources.cd_play
 import mani.shared.generated.resources.cd_playlist_cover
+import mani.shared.generated.resources.playlist_filtered_label
 import mani.shared.generated.resources.playlist_runtime_hours_minutes
 import mani.shared.generated.resources.playlist_runtime_minutes_only
 import mani.shared.generated.resources.playlist_song_count
@@ -41,19 +42,23 @@ import xyz.skifty.mani.ext.totalRuntimeSeconds
 import xyz.skifty.mani.media.AudioPlayer
 import xyz.skifty.mani.media.PlaybackQueue
 import xyz.skifty.mani.media.PlaylistDetails
+import xyz.skifty.mani.media.SongInfo
 
 /** Large centered cover, then title/owner/song-count sharing a row with the play button - the
  *  mobile layout convention (Spotify's playlist screen in particular), vs. desktop's more compact
- *  side-by-side [PlaylistHeader]. */
+ *  side-by-side [PlaylistHeader]. Song count/runtime are computed from [filteredSongs], not
+ *  [details]' own full list, so a search filter's stats stay accurate - see a "Filtered" line
+ *  shown right below whenever [searchQuery] is non-blank. [onSearchQueryChange] itself is unused
+ *  here - Android's playlist-search field lives in `PlaylistScrollContainer`, not here - it's only
+ *  present because expect/actual requires matching signatures with desktop's `PlaylistActionsRow`-
+ *  based version; see `PlaylistHeaderBlock`'s own doc comment. */
 @Composable
 actual fun PlaylistHeaderBlock(
     details: PlaylistDetails,
     audioPlayer: AudioPlayer,
     playbackQueue: PlaybackQueue,
     playlistId: String?,
-    // Unused here - Android has no playlist-search UI, unlike desktop's PlaylistActionsRow. Only
-    // present because expect/actual requires matching signatures - see PlaylistHeaderBlock's own
-    // doc comment.
+    filteredSongs: List<SongInfo>,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     modifier: Modifier,
@@ -119,10 +124,10 @@ actual fun PlaylistHeaderBlock(
 
                 val songCount = pluralStringResource(
                     Res.plurals.playlist_song_count,
-                    details.songs.size,
-                    details.songs.size,
+                    filteredSongs.size,
+                    filteredSongs.size,
                 )
-                val (runtimeHours, runtimeMinutes) = details.totalRuntimeSeconds().toHoursAndMinutes()
+                val (runtimeHours, runtimeMinutes) = filteredSongs.totalRuntimeSeconds().toHoursAndMinutes()
                 val runtimeLabel = if (runtimeHours > 0) {
                     stringResource(Res.string.playlist_runtime_hours_minutes, runtimeHours, runtimeMinutes)
                 } else {
@@ -137,6 +142,15 @@ actual fun PlaylistHeaderBlock(
                     textAlign = TextAlign.Start,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                if (searchQuery.isNotBlank()) {
+                    Text(
+                        text = stringResource(Res.string.playlist_filtered_label),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Start,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
 
             FilledIconButton(

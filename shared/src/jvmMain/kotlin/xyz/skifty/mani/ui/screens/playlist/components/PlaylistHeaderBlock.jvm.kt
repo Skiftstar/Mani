@@ -8,6 +8,7 @@ import androidx.compose.ui.unit.dp
 import xyz.skifty.mani.media.AudioPlayer
 import xyz.skifty.mani.media.PlaybackQueue
 import xyz.skifty.mani.media.PlaylistDetails
+import xyz.skifty.mani.media.SongInfo
 
 @Composable
 actual fun PlaylistHeaderBlock(
@@ -15,6 +16,7 @@ actual fun PlaylistHeaderBlock(
     audioPlayer: AudioPlayer,
     playbackQueue: PlaybackQueue,
     playlistId: String?,
+    filteredSongs: List<SongInfo>,
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     modifier: Modifier,
@@ -23,7 +25,11 @@ actual fun PlaylistHeaderBlock(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
-        PlaylistHeader(details = details)
+        PlaylistHeader(
+            details = details,
+            filteredSongs = filteredSongs,
+            searchQuery = searchQuery,
+        )
         PlaylistActionsRow(
             audioPlayer = audioPlayer,
             playbackQueue = playbackQueue,
