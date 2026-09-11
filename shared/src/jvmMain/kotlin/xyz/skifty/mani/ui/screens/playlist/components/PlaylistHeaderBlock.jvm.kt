@@ -15,6 +15,8 @@ actual fun PlaylistHeaderBlock(
     audioPlayer: AudioPlayer,
     playbackQueue: PlaybackQueue,
     playlistId: String?,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
     modifier: Modifier,
 ) {
     Column(
@@ -27,6 +29,8 @@ actual fun PlaylistHeaderBlock(
             playbackQueue = playbackQueue,
             playlistId = playlistId,
             songs = details.songs,
+            searchQuery = searchQuery,
+            onSearchQueryChange = onSearchQueryChange,
         )
     }
 }

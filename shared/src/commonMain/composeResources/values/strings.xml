@@ -48,6 +48,7 @@
     <string name="playlist_column_quality">Quality</string>
     <string name="cd_duration">Duration</string>
     <string name="playlist_badge">Playlist</string>
+    <string name="playlist_search_placeholder">Search in playlist</string>
     <string name="playlist_runtime_hours_minutes">%1$dh %2$dmin</string>
     <string name="playlist_runtime_minutes_only">%1$dmin</string>
 

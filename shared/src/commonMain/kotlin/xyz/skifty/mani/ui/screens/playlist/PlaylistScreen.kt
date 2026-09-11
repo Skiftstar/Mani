@@ -40,6 +40,7 @@ fun PlaylistScreen(
 ) {
 
     var details by remember(playlistId) { mutableStateOf<PlaylistDetails?>(null) }
+    var searchQuery by remember(playlistId) { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(playlistId) {
@@ -57,6 +58,15 @@ fun PlaylistScreen(
     }
 
     val currentDetails = details
+    val filteredSongs = if (currentDetails == null || searchQuery.isBlank()) {
+        currentDetails?.songs.orEmpty()
+    } else {
+        currentDetails.songs.filter { song ->
+            song.songName?.contains(searchQuery, ignoreCase = true) == true ||
+                song.songArtist?.contains(searchQuery, ignoreCase = true) == true
+        }
+    }
+
     if (currentDetails == null) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -76,30 +86,38 @@ fun PlaylistScreen(
                 audioPlayer = audioPlayer,
                 playbackQueue = playbackQueue,
                 playlistId = playlistId,
+                searchQuery = searchQuery,
+                onSearchQueryChange = { query -> searchQuery = query },
                 modifier = Modifier.padding(horizontal = 24.dp),
             )
             PlaylistSongTable(
-                songs = currentDetails.songs,
+                songs = filteredSongs,
                 audioPlayer = audioPlayer,
                 activeSongInfo = activeSongInfo,
                 apiService = apiService,
                 playbackQueue = playbackQueue,
                 playlistLibrary = playlistLibrary,
                 onSongClick = { index ->
-                    playbackQueue.start(currentDetails.songs, index, playlistId)
+                    playbackQueue.start(filteredSongs, index, playlistId)
                 },
                 // Never shown for Liked Songs (playlistId == null)
                 onRemoveFromPlaylist = playlistId?.let { pid ->
-                    { index: Int ->
-                        val song = currentDetails.songs.getOrNull(index)
+                    { filteredIndex: Int ->
+                        // filteredIndex is a position in filteredSongs, but
+                        // removeSongFromPlaylist() removes by position in the real,
+                        // server-side (unfiltered) playlist - has to be remapped back to
+                        // currentDetails.songs' own index before that call, or a search filter
+                        // being active would delete the wrong song.
+                        val song = filteredSongs.getOrNull(filteredIndex)
                         val songId = song?.songId
-                        if (song != null && songId != null) {
+                        val originalIndex = song?.let { currentDetails.songs.indexOf(it) } ?: -1
+                        if (song != null && songId != null && originalIndex >= 0) {
                             val previous = currentDetails
                             // Optimistic - rolled back wholesale on failure rather than trying to
                             // re-insert at a possibly-now-stale index.
                             details = currentDetails.copy(songs = currentDetails.songs - song)
                             scope.launch {
-                                val result = apiService.removeSongFromPlaylist(pid, index)
+                                val result = apiService.removeSongFromPlaylist(pid, originalIndex)
                                 if (result.isFailure) {
                                     details = previous
                                 } else {

@@ -51,6 +51,11 @@ actual fun PlaylistHeaderBlock(
     audioPlayer: AudioPlayer,
     playbackQueue: PlaybackQueue,
     playlistId: String?,
+    // Unused here - Android has no playlist-search UI, unlike desktop's PlaylistActionsRow. Only
+    // present because expect/actual requires matching signatures - see PlaylistHeaderBlock's own
+    // doc comment.
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
     modifier: Modifier,
 ) {
     Column(

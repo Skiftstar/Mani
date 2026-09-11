@@ -39,4 +39,7 @@
     <string name="delete_playlist_confirm_button">Delete</string>
     <string name="delete_playlist_cancel_button">Cancel</string>
     <string name="delete_playlist_error">Couldn't delete playlist. Try again.</string>
+
+    <!-- Playlist screen -->
+    <string name="playlist_search_placeholder">Search in playlist</string>
 </resources>
