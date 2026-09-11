@@ -174,37 +174,29 @@ fun AndroidApp() {
                             onLogout = { appShellState.logout() },
                         )
 
-                        is Screen.Playlist -> Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .verticalScroll(rememberScrollState()),
-                        ) {
-                            PlaylistScreen(
-                                apiService = apiService,
-                                audioPlayer = audioPlayer,
-                                activeSongInfo = activeSongInfo,
-                                playbackQueue = playbackQueue,
-                                playlistLibrary = playlistLibrary,
-                                playlistId = currentScreen.playlistId,
-                                playlistName = currentScreen.playlistName,
-                            )
-                        }
+                        // No external Modifier.verticalScroll(...) wrapper here, unlike the other
+                        // branches - PlaylistScreen now owns its own scrolling on Android (via
+                        // PlaylistScrollContainer), so it can reveal a search field on scroll-up.
+                        // Nesting a second verticalScroll around that would crash at runtime.
+                        is Screen.Playlist -> PlaylistScreen(
+                            apiService = apiService,
+                            audioPlayer = audioPlayer,
+                            activeSongInfo = activeSongInfo,
+                            playbackQueue = playbackQueue,
+                            playlistLibrary = playlistLibrary,
+                            playlistId = currentScreen.playlistId,
+                            playlistName = currentScreen.playlistName,
+                        )
 
-                        Screen.LikedSongs -> Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .verticalScroll(rememberScrollState()),
-                        ) {
-                            PlaylistScreen(
-                                apiService = apiService,
-                                audioPlayer = audioPlayer,
-                                activeSongInfo = activeSongInfo,
-                                playbackQueue = playbackQueue,
-                                playlistLibrary = playlistLibrary,
-                                playlistId = null,
-                                playlistName = stringResource(Res.string.playlist_liked_songs_title),
-                            )
-                        }
+                        Screen.LikedSongs -> PlaylistScreen(
+                            apiService = apiService,
+                            audioPlayer = audioPlayer,
+                            activeSongInfo = activeSongInfo,
+                            playbackQueue = playbackQueue,
+                            playlistLibrary = playlistLibrary,
+                            playlistId = null,
+                            playlistName = stringResource(Res.string.playlist_liked_songs_title),
+                        )
 
                         Screen.Search -> AndroidSearchScreen(
                             apiService = apiService,

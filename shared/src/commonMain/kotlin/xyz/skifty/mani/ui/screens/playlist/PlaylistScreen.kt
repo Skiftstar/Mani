@@ -27,6 +27,7 @@ import xyz.skifty.mani.media.SongInfo
 import xyz.skifty.mani.ui.components.PlaylistSongTable
 import xyz.skifty.mani.ui.components.playlistTableHorizontalPadding
 import xyz.skifty.mani.ui.screens.playlist.components.PlaylistHeaderBlock
+import xyz.skifty.mani.ui.screens.playlist.components.PlaylistScrollContainer
 
 @Composable
 fun PlaylistScreen(
@@ -67,71 +68,76 @@ fun PlaylistScreen(
         }
     }
 
-    if (currentDetails == null) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
-        ) {
-            CircularProgressIndicator()
-        }
-    } else {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp),
-        ) {
-            PlaylistHeaderBlock(
-                details = currentDetails,
-                audioPlayer = audioPlayer,
-                playbackQueue = playbackQueue,
-                playlistId = playlistId,
-                searchQuery = searchQuery,
-                onSearchQueryChange = { query -> searchQuery = query },
-                modifier = Modifier.padding(horizontal = 24.dp),
-            )
-            PlaylistSongTable(
-                songs = filteredSongs,
-                audioPlayer = audioPlayer,
-                activeSongInfo = activeSongInfo,
-                apiService = apiService,
-                playbackQueue = playbackQueue,
-                playlistLibrary = playlistLibrary,
-                onSongClick = { index ->
-                    playbackQueue.start(filteredSongs, index, playlistId)
-                },
-                // Never shown for Liked Songs (playlistId == null)
-                onRemoveFromPlaylist = playlistId?.let { pid ->
-                    { filteredIndex: Int ->
-                        // filteredIndex is a position in filteredSongs, but
-                        // removeSongFromPlaylist() removes by position in the real,
-                        // server-side (unfiltered) playlist - has to be remapped back to
-                        // currentDetails.songs' own index before that call, or a search filter
-                        // being active would delete the wrong song.
-                        val song = filteredSongs.getOrNull(filteredIndex)
-                        val songId = song?.songId
-                        val originalIndex = song?.let { currentDetails.songs.indexOf(it) } ?: -1
-                        if (song != null && songId != null && originalIndex >= 0) {
-                            val previous = currentDetails
-                            // Optimistic - rolled back wholesale on failure rather than trying to
-                            // re-insert at a possibly-now-stale index.
-                            details = currentDetails.copy(songs = currentDetails.songs - song)
-                            scope.launch {
-                                val result = apiService.removeSongFromPlaylist(pid, originalIndex)
-                                if (result.isFailure) {
-                                    details = previous
-                                } else {
-                                    playlistLibrary.recordSongRemoved(pid, songId)
-                                    // refresh playlists since adding/removing songs can
-                                    // change the cover art
-                                    playlistLibrary.refreshPlaylists(apiService)
+    PlaylistScrollContainer(
+        searchQuery = searchQuery,
+        onSearchQueryChange = { query -> searchQuery = query },
+    ) {
+        if (currentDetails == null) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator()
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp),
+            ) {
+                PlaylistHeaderBlock(
+                    details = currentDetails,
+                    audioPlayer = audioPlayer,
+                    playbackQueue = playbackQueue,
+                    playlistId = playlistId,
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = { query -> searchQuery = query },
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                )
+                PlaylistSongTable(
+                    songs = filteredSongs,
+                    audioPlayer = audioPlayer,
+                    activeSongInfo = activeSongInfo,
+                    apiService = apiService,
+                    playbackQueue = playbackQueue,
+                    playlistLibrary = playlistLibrary,
+                    onSongClick = { index ->
+                        playbackQueue.start(filteredSongs, index, playlistId)
+                    },
+                    // Never shown for Liked Songs (playlistId == null)
+                    onRemoveFromPlaylist = playlistId?.let { pid ->
+                        { filteredIndex: Int ->
+                            // filteredIndex is a position in filteredSongs, but
+                            // removeSongFromPlaylist() removes by position in the real,
+                            // server-side (unfiltered) playlist - has to be remapped back to
+                            // currentDetails.songs' own index before that call, or a search filter
+                            // being active would delete the wrong song.
+                            val song = filteredSongs.getOrNull(filteredIndex)
+                            val songId = song?.songId
+                            val originalIndex = song?.let { currentDetails.songs.indexOf(it) } ?: -1
+                            if (song != null && songId != null && originalIndex >= 0) {
+                                val previous = currentDetails
+                                // Optimistic - rolled back wholesale on failure rather than trying
+                                // to re-insert at a possibly-now-stale index.
+                                details = currentDetails.copy(songs = currentDetails.songs - song)
+                                scope.launch {
+                                    val result = apiService.removeSongFromPlaylist(pid, originalIndex)
+                                    if (result.isFailure) {
+                                        details = previous
+                                    } else {
+                                        playlistLibrary.recordSongRemoved(pid, songId)
+                                        // refresh playlists since adding/removing songs can
+                                        // change the cover art
+                                        playlistLibrary.refreshPlaylists(apiService)
+                                    }
                                 }
                             }
                         }
-                    }
-                },
-                modifier = Modifier.padding(horizontal = playlistTableHorizontalPadding),
-            )
+                    },
+                    modifier = Modifier.padding(horizontal = playlistTableHorizontalPadding),
+                )
+            }
         }
     }
 
