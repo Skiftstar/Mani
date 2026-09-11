@@ -132,6 +132,12 @@ fun PlaylistSongTable(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         }
 
+        // Whether audioPlayer's currently-active song (if any) actually came from playing
+        // *this* list, as opposed to e.g. a single-song restore on startup
+        // (PlaybackQueue.prepareSingle()) - see PlaylistSongRow's own doc comment on why a plain
+        // song-id match isn't enough to know it's safe to just toggle play/pause on click.
+        val isQueueSourcedFromThisList = playbackQueue.songs == songs
+
         for ((index, songInfo) in songs.withIndex()) {
             PlaylistSongRow(
                 index = index + 1,
@@ -140,6 +146,7 @@ fun PlaylistSongTable(
                 activeSongInfo = activeSongInfo,
                 apiService = apiService,
                 playlistLibrary = playlistLibrary,
+                isQueueSourcedFromCurrentList = isQueueSourcedFromThisList,
                 onClick = {
                     onSongClick(index)
                 },

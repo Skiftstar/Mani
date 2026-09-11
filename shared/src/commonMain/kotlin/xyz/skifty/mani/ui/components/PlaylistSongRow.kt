@@ -64,8 +64,12 @@ import xyz.skifty.mani.media.SongInfo
  *  thumbnail + title/artist, quality, duration, and a star/unstar toggle. Whenever this row's
  *  song is the one currently loaded in [audioPlayer] (per [activeSongInfo]), its text is tinted
  *  the accent color and clicking it toggles play/pause instead of restarting the track from the
- *  beginning. Right-clicking (desktop) or long-pressing (touch) opens a context menu - see
- *  [SongContextMenuHost]. */
+ *  beginning - but only when [isQueueSourcedFromCurrentList] also holds. A song-id match alone
+ *  isn't enough: e.g. right after a startup restore (PlaybackQueue.prepareSingle()), the restored
+ *  song is "active" even though the queue behind it is just that one song, not the playlist it
+ *  actually came from - clicking it in that state should rebuild the queue via [onClick] like any
+ *  other click, not just toggle play/pause. Right-clicking (desktop) or long-pressing (touch)
+ *  opens a context menu - see [SongContextMenuHost]. */
 @Composable
 fun PlaylistSongRow(
     index: Int,
@@ -74,6 +78,7 @@ fun PlaylistSongRow(
     activeSongInfo: SongInfo,
     apiService: ApiService,
     playlistLibrary: PlaylistLibrary,
+    isQueueSourcedFromCurrentList: Boolean,
     onClick: () -> Unit,
     onToggleStar: () -> Unit,
     onPlay: () -> Unit,
@@ -113,7 +118,7 @@ fun PlaylistSongRow(
                 .fillMaxWidth()
                 .combinedClickable(
                     onClick = {
-                        if (isActive) {
+                        if (isActive && isQueueSourcedFromCurrentList) {
                             audioPlayer.togglePlayPause()
                         } else {
                             onClick()
