@@ -28,9 +28,20 @@ class PlaybackQueue(
     // Identifies which playlist this queue was last started from - null both before any queue has
     // started and for the Liked Songs pseudo-playlist, matching PlaylistScreen's own playlistId
     // convention. Lets a playlist screen tell whether *it* is the one currently playing, to show
-    // a pause icon instead of play - always check alongside songs.isNotEmpty() too, since null
-    // alone doesn't distinguish "no queue yet" from "currently playing Liked Songs".
+    // a pause icon instead of play - always check alongside songs.isNotEmpty() AND
+    // hasActiveSource too, since null alone doesn't distinguish "no queue yet"/"just a restored
+    // session leftover" from "currently playing Liked Songs".
     var currentSourceId: String? by mutableStateOf(null)
+        private set
+
+    // True once the queue has actually been started via start() (a real playlist, or Liked Songs
+    // with a null currentSourceId) - false for prepareSingle()'s session-restore case, which also
+    // leaves currentSourceId null but was never really "playing Liked Songs" or anything else,
+    // just a paused leftover from last session. Without this, opening Liked Songs and pressing
+    // Play right after a restart would see currentSourceId == null (matching Liked Songs' own
+    // sentinel) and wrongly conclude Liked Songs was already the active source, unpausing the
+    // restored song instead of actually starting Liked Songs.
+    var hasActiveSource: Boolean by mutableStateOf(false)
         private set
 
     // Indices into `songs`, in play order - identity order normally, shuffled (anchored at
@@ -136,6 +147,7 @@ class PlaybackQueue(
         }
         songs = newSongs
         currentSourceId = sourceId
+        hasActiveSource = true
         playOrder = buildPlayOrder(
             size = newSongs.size,
             shuffle = shuffleEnabled,
@@ -162,6 +174,7 @@ class PlaybackQueue(
     fun prepareSingle(song: SongInfo) {
         songs = listOf(song)
         currentSourceId = null
+        hasActiveSource = false
         playOrder = listOf(0)
         currentPosition = 0
         autoplayPending = null
@@ -380,6 +393,14 @@ class PlaybackQueue(
             speechiness = profiles.map { profile -> profile.speechiness }.average(),
             valence = profiles.map { profile -> profile.valence }.average(),
         )
+    }
+
+    /** Drops the still-pending Autoplay batch, if any, without touching anything already merged
+     *  into [songs]/[playOrder] - used when Autoplay gets disabled entirely (see
+     *  `AppShellState.setAutoplayEnabled`), so a batch fetched moments before turning it off
+     *  doesn't silently get played anyway once [next] reaches the end of the queue. */
+    fun clearAutoplayPreview() {
+        autoplayPending = null
     }
 
     /** Appends a fetched Autoplay [batch] to [songs]/[playOrder] and marks its songs as

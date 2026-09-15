@@ -98,7 +98,9 @@ actual fun PlaylistHeaderBlock(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        val isThisPlaylistActive = playbackQueue.songs.isNotEmpty() && playbackQueue.currentSourceId == playlistId
+        val isThisPlaylistActive = playbackQueue.songs.isNotEmpty() &&
+            playbackQueue.hasActiveSource &&
+            playbackQueue.currentSourceId == playlistId
         val isPlaying = isThisPlaylistActive && audioPlayer.isPlaying
 
         // Title/metadata and the play button share one row, vertically centered against both

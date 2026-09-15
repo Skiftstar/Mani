@@ -81,7 +81,9 @@ fun AndroidApp() {
     // next, that's the Queue screen itself; otherwise, the same fallback as before this existed -
     // the playlist the current queue came from, the Liked Songs pseudo-playlist if it came from
     // there instead (currentSourceId == null but something *is* queued - see PlaybackQueue's own
-    // doc comment), or Home if nothing's queued at all.
+    // doc comment), or Home if nothing's queued at all - including a session-restored song that
+    // was never actually started from anywhere (hasActiveSource false), which isn't really "from"
+    // Liked Songs just because currentSourceId also happens to be null there.
     fun navigateToQueueSource() {
         if (playbackQueue.hasNext) {
             appShellState.navigate(Screen.Queue)
@@ -94,7 +96,7 @@ fun AndroidApp() {
                 playlistName = playlistLibrary.playlists?.firstOrNull { playlist -> playlist.id == sourceId }?.name ?: "",
             )
 
-            playbackQueue.songs.isNotEmpty() -> Screen.LikedSongs
+            playbackQueue.hasActiveSource && playbackQueue.songs.isNotEmpty() -> Screen.LikedSongs
             else -> Screen.Home
         }
         appShellState.navigate(target)

@@ -59,6 +59,12 @@ class AppShellState(
 
     fun setAutoplayEnabled(enabled: Boolean) {
         autoplayEnabled = enabled
+        if (!enabled) {
+            // Only the still-pending (not yet merged) batch - anything Autoplay already merged
+            // into the actual queue stays put, same as removing the toggle mid-playback shouldn't
+            // yank songs out from under the listener.
+            playbackQueue.clearAutoplayPreview()
+        }
     }
 
     fun logout() {

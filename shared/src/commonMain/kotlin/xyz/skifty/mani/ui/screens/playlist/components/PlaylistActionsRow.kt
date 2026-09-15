@@ -67,7 +67,9 @@ fun PlaylistActionsRow(
     onSearchQueryChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val isThisPlaylistActive = playbackQueue.songs.isNotEmpty() && playbackQueue.currentSourceId == playlistId
+    val isThisPlaylistActive = playbackQueue.songs.isNotEmpty() &&
+        playbackQueue.hasActiveSource &&
+        playbackQueue.currentSourceId == playlistId
     val isPlaying = isThisPlaylistActive && audioPlayer.isPlaying
     var isSearchExpanded by remember { mutableStateOf(false) }
     val searchFieldFocusRequester = remember { FocusRequester() }
