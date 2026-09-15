@@ -215,6 +215,13 @@ class PlaybackQueue(
             ?.starred = starred
     }
 
+    /** Increments the play count on whichever of [songs] shares [songId], if any - same
+     *  "keep the queue's own separate SongInfo instance in sync" reasoning as [updateStarred]. */
+    fun incrementPlayCount(songId: String) {
+        songs.firstOrNull { song -> song.songId == songId }
+            ?.let { song -> song.songPlayCount = (song.songPlayCount ?: 0) + 1 }
+    }
+
     /** Called when the current track finishes naturally - replays it if [LoopMode.ONE], otherwise
      *  behaves like [next]. */
     fun onTrackFinished() {

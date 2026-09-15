@@ -189,7 +189,18 @@ fun rememberAppShellState(): AppShellState {
         if (listenedMs >= thresholdMs) {
             lastScrobbledSongId = songId
             lastScrobbledPlayThrough = playThrough
-            apiService.scrobble(songId, listenedMs)
+            val result = apiService.scrobble(songId, listenedMs)
+            if (result.isSuccess) {
+                // Optimistic local increment, not a refetch - same "patch the SongInfo instances
+                // that need it" shape as toggleStar/PlaybackQueue.updateStarred, and for the same
+                // reason: activeSongInfo and the queue's own copy of this song are usually
+                // separate instances, so both need updating or this would revert the moment the
+                // song replays from the queue (repeat-one, or switching away and back).
+                playbackQueue.incrementPlayCount(songId)
+                if (activeSongInfo.songId == songId) {
+                    activeSongInfo.songPlayCount = (activeSongInfo.songPlayCount ?: 0) + 1
+                }
+            }
         }
     }
 

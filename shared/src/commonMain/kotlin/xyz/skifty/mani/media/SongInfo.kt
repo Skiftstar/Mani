@@ -30,7 +30,6 @@ class SongInfo {
         private set
 
     var songPlayCount by mutableStateOf<Int?>(null)
-        private set
 
     var starred by mutableStateOf(false)
 
