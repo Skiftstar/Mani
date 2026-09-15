@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import xyz.skifty.mani.api.ApiService
+import xyz.skifty.mani.ext.toVibeProfileOrNull
 
 // Autoplay prefetches once this few songs remain after the current one, and fetches this many
 // similar songs at a time - see maybeFetchAutoplay().
@@ -57,6 +58,16 @@ class PlaybackQueue(
     // next skip) happened to change too.
     private var autoplayPending: List<SongInfo>? by mutableStateOf(null)
     private var autoplaySongIds: Set<String> by mutableStateOf(emptySet())
+
+    // Songs the user has actually queued themselves - via start()/prepareSingle() (reset) or
+    // addToEnd()/removeAt() (append/remove) - excluding anything Autoplay ever added. This, not
+    // the full history in `songs`, is what maybeFetchAutoplay() averages a vibe profile over:
+    // unlike `songs`, it's still non-empty no matter how many Autoplay batches deep playback
+    // currently is (once you're deep into Autoplay, everything ahead in `songs` is Autoplay-
+    // tagged), and unlike `songs` it actually shrinks when removeAt() removes a manual song, so
+    // that correctly invalidates the average too.
+    var manualSongs: List<SongInfo> by mutableStateOf(emptyList())
+        private set
 
     // Also true at the very end of playOrder if an Autoplay batch is already fetched and waiting
     // to be merged in - see next() - so the skip-forward button doesn't gray out right when
@@ -132,10 +143,11 @@ class PlaybackQueue(
         )
         currentPosition = playOrder.indexOf(startIndex)
             .coerceAtLeast(0)
-        // A fresh queue context shouldn't carry over an Autoplay batch fetched for whatever was
-        // playing before.
+        // A fresh queue context shouldn't carry over an Autoplay batch (or the manual-song vibe
+        // history it'd be based on) fetched for whatever was playing before.
         autoplayPending = null
         autoplaySongIds = emptySet()
+        manualSongs = newSongs
         playCurrent()
     }
 
@@ -152,6 +164,9 @@ class PlaybackQueue(
         currentSourceId = null
         playOrder = listOf(0)
         currentPosition = 0
+        autoplayPending = null
+        autoplaySongIds = emptySet()
+        manualSongs = listOf(song)
     }
 
     /** Queues [song] without interrupting playback - normally appended to the very end, but if
@@ -159,7 +174,10 @@ class PlaybackQueue(
      *  not just pending - see [autoplaySongIds]), inserted right after the current song instead,
      *  so a manually queued song always plays next rather than being buried after the rest of the
      *  Autoplay batch. If nothing's queued yet, there's nothing to append to - starts a fresh
-     *  single-song queue instead, same as [start] would for a plain "play this song now". */
+     *  single-song queue instead, same as [start] would for a plain "play this song now". Also
+     *  appends to [manualSongs] and drops any still-pending Autoplay batch - a manually queued
+     *  song changes the vibe profile Autoplay should be seeded from, so a stale pending batch
+     *  needs recomputing, not just extending. */
     fun addToEnd(song: SongInfo) {
         if (songs.isEmpty()) {
             start(listOf(song), 0, sourceId = null)
@@ -176,6 +194,8 @@ class PlaybackQueue(
         } else {
             playOrder + newSongIndex
         }
+        manualSongs = manualSongs + song
+        autoplayPending = null
     }
 
     fun setShuffle(enabled: Boolean) {
@@ -261,12 +281,26 @@ class PlaybackQueue(
      *  "remove from queue" action. Only ever an upcoming entry ([position] must be past
      *  [currentPosition]) - the currently-playing song can't be removed this way. [songs] (the
      *  identity list) is untouched, so no reindexing concerns even with shuffle active. A no-op if
-     *  [position] isn't a removable index. */
+     *  [position] isn't a removable index. If the removed song was manually queued (not
+     *  Autoplay-sourced), also drops its first matching occurrence from [manualSongs] and any
+     *  still-pending Autoplay batch - same "the vibe profile just changed" reasoning as
+     *  [addToEnd]. Removing an Autoplay-sourced entry instead leaves both alone - it was never
+     *  part of the profile to begin with. */
     fun removeAt(position: Int) {
         if (position <= currentPosition || position !in playOrder.indices) {
             return
         }
+        val removedSongId = songs.getOrNull(playOrder[position])?.songId
         playOrder = playOrder.toMutableList().apply { removeAt(position) }
+        if (removedSongId != null && removedSongId !in autoplaySongIds) {
+            manualSongs = manualSongs.toMutableList().apply {
+                val index = indexOfFirst { song -> song.songId == removedSongId }
+                if (index != -1) {
+                    removeAt(index)
+                }
+            }
+            autoplayPending = null
+        }
     }
 
     /** Patches the starred flag on whichever of [songs] shares [songId], if any - keeps a star
@@ -301,13 +335,17 @@ class PlaybackQueue(
         }
     }
 
-    /** Prefetches ~[AUTOPLAY_FETCH_COUNT] similar songs, based on the queue's current last song,
-     *  once [upcoming] has [AUTOPLAY_TRIGGER_REMAINING_COUNT] or fewer songs left in it - a no-op
-     *  if a batch is already pending (deliberately not recomputed just because more songs get
-     *  manually queued in the meantime), if [loopMode] isn't [LoopMode.OFF] (nothing to
+    /** Prefetches ~[AUTOPLAY_FETCH_COUNT] songs matching the average vibe profile of
+     *  [manualSongs] (the songs the user has actually queued, not Autoplay's own additions), once
+     *  [upcoming] has [AUTOPLAY_TRIGGER_REMAINING_COUNT] or fewer songs left in it - excluding
+     *  every song already anywhere in the queue ([manualSongs] plus [autoplaySongIds]) so nothing
+     *  gets suggested twice. A no-op if a batch is already pending ([addToEnd]/[removeAt] clear
+     *  it whenever the manual queue - and so the average - changes, which is what makes this
+     *  recompute rather than staying stale), if [loopMode] isn't [LoopMode.OFF] (nothing to
      *  prefetch for - see [next]'s doc comment on why the actual merge is structurally OFF-only
-     *  regardless), or if the fetch comes back empty. Callers are expected to invoke this
-     *  reactively as the queue changes, e.g. from a `LaunchedEffect`. */
+     *  regardless), if none of [manualSongs] has vibe data (e.g. a stock server), or if the fetch
+     *  comes back empty. Callers are expected to invoke this reactively as the queue changes, e.g.
+     *  from a `LaunchedEffect`. */
     suspend fun maybeFetchAutoplay() {
         if (loopMode != LoopMode.OFF || autoplayPending != null) {
             return
@@ -316,12 +354,32 @@ class PlaybackQueue(
         if (remaining > AUTOPLAY_TRIGGER_REMAINING_COUNT) {
             return
         }
-        val seedSongId = songs.lastOrNull()?.songId
+        val vibeProfile = averageVibeProfile(manualSongs)
             ?: return
-        val similarSongs = apiService.getVibeSimilarSongs(seedSongId, AUTOPLAY_FETCH_COUNT)
+        val excludeSongIds = (manualSongs.mapNotNull { song -> song.songId } + autoplaySongIds).distinct()
+        val similarSongs = apiService.getVibeSimilarSongs(vibeProfile, excludeSongIds, AUTOPLAY_FETCH_COUNT)
         if (similarSongs.isNotEmpty()) {
             autoplayPending = similarSongs
         }
+    }
+
+    /** The average of each of the 7 VibeNet stats across whichever of [candidateSongs] actually
+     *  has vibe data (see [toVibeProfileOrNull]) - null if none of them do (e.g. a stock server
+     *  that doesn't return these fields at all). */
+    private fun averageVibeProfile(candidateSongs: List<SongInfo>): VibeProfile? {
+        val profiles = candidateSongs.mapNotNull { song -> song.toVibeProfileOrNull() }
+        if (profiles.isEmpty()) {
+            return null
+        }
+        return VibeProfile(
+            acousticness = profiles.map { profile -> profile.acousticness }.average(),
+            danceability = profiles.map { profile -> profile.danceability }.average(),
+            energy = profiles.map { profile -> profile.energy }.average(),
+            instrumentalness = profiles.map { profile -> profile.instrumentalness }.average(),
+            liveness = profiles.map { profile -> profile.liveness }.average(),
+            speechiness = profiles.map { profile -> profile.speechiness }.average(),
+            valence = profiles.map { profile -> profile.valence }.average(),
+        )
     }
 
     /** Appends a fetched Autoplay [batch] to [songs]/[playOrder] and marks its songs as

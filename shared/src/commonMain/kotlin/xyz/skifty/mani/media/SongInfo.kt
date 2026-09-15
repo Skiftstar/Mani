@@ -33,6 +33,31 @@ class SongInfo {
 
     var starred by mutableStateOf(false)
 
+    // VibeNet stats (0-1 floats), from this app's own Navidrome fork - null on a stock server, or
+    // any endpoint that doesn't return them. See ext/SongInfoExt.kt's toVibeProfileOrNull() and
+    // PlaybackQueue's Autoplay feature, which averages these across manually-queued songs to seed
+    // getVibeSimilarTracks.
+    var songAcousticness by mutableStateOf<Double?>(null)
+        private set
+
+    var songDanceability by mutableStateOf<Double?>(null)
+        private set
+
+    var songEnergy by mutableStateOf<Double?>(null)
+        private set
+
+    var songInstrumentalness by mutableStateOf<Double?>(null)
+        private set
+
+    var songLiveness by mutableStateOf<Double?>(null)
+        private set
+
+    var songSpeechiness by mutableStateOf<Double?>(null)
+        private set
+
+    var songValence by mutableStateOf<Double?>(null)
+        private set
+
     fun setSong(
         id: String,
         name: String,
@@ -44,6 +69,13 @@ class SongInfo {
         format: String?,
         playCount: Int?,
         starred: Boolean,
+        acousticness: Double? = null,
+        danceability: Double? = null,
+        energy: Double? = null,
+        instrumentalness: Double? = null,
+        liveness: Double? = null,
+        speechiness: Double? = null,
+        valence: Double? = null,
     ) {
         songId = id
         songName = name
@@ -55,6 +87,13 @@ class SongInfo {
         songFormat = format
         songPlayCount = playCount
         this.starred = starred
+        songAcousticness = acousticness
+        songDanceability = danceability
+        songEnergy = energy
+        songInstrumentalness = instrumentalness
+        songLiveness = liveness
+        songSpeechiness = speechiness
+        songValence = valence
     }
 
     fun setSong(songInfo: SongInfo) {
@@ -68,6 +107,13 @@ class SongInfo {
         songFormat = songInfo.songFormat
         songPlayCount = songInfo.songPlayCount
         starred = songInfo.starred
+        songAcousticness = songInfo.songAcousticness
+        songDanceability = songInfo.songDanceability
+        songEnergy = songInfo.songEnergy
+        songInstrumentalness = songInfo.songInstrumentalness
+        songLiveness = songInfo.songLiveness
+        songSpeechiness = songInfo.songSpeechiness
+        songValence = songInfo.songValence
     }
 
     fun clear() {
@@ -81,5 +127,12 @@ class SongInfo {
         songFormat = null
         songPlayCount = null
         starred = false
+        songAcousticness = null
+        songDanceability = null
+        songEnergy = null
+        songInstrumentalness = null
+        songLiveness = null
+        songSpeechiness = null
+        songValence = null
     }
 }

@@ -14,4 +14,11 @@ data class ResponseSongInfo(
     val suffix: String? = null,
     val starred: String? = null,
     val playCount: Int? = null,
+    val acousticness: Double? = null,
+    val danceability: Double? = null,
+    val energy: Double? = null,
+    val instrumentalness: Double? = null,
+    val liveness: Double? = null,
+    val speechiness: Double? = null,
+    val valence: Double? = null,
 )

@@ -190,8 +190,15 @@ fun rememberAppShellState(): AppShellState {
 
     // Prefetches the next Autoplay batch as the queue changes, so it's ready by the time the
     // user's own queue actually runs out - see PlaybackQueue.maybeFetchAutoplay(). Desktop has no
-    // toggle for autoplayEnabled yet, so this stays on there unconditionally.
-    LaunchedEffect(playbackQueue.currentPosition, playbackQueue.songs, state.autoplayEnabled) {
+    // toggle for autoplayEnabled yet, so this stays on there unconditionally. manualSongs is its
+    // own key (not implied by songs/currentPosition) because removeAt() can change it - and so
+    // invalidate a pending batch - without touching songs or currentPosition at all.
+    LaunchedEffect(
+        playbackQueue.currentPosition,
+        playbackQueue.songs,
+        playbackQueue.manualSongs,
+        state.autoplayEnabled,
+    ) {
         if (state.autoplayEnabled) {
             playbackQueue.maybeFetchAutoplay()
         }

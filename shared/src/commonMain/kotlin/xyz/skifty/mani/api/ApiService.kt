@@ -15,6 +15,7 @@ import kotlinx.serialization.json.Json
 import xyz.skifty.mani.media.PlaylistDetails
 import xyz.skifty.mani.media.PlaylistInfo
 import xyz.skifty.mani.media.SongInfo
+import xyz.skifty.mani.media.VibeProfile
 import xyz.skifty.mani.models.ResponseSongInfo
 import xyz.skifty.mani.models.SubsonicResponseWrapper
 import xyz.skifty.mani.util.generateSalt
@@ -98,11 +99,25 @@ class ApiService {
             format = responseSongInfo.suffix,
             playCount = responseSongInfo.playCount,
             starred = responseSongInfo.starred != null,
+            acousticness = responseSongInfo.acousticness,
+            danceability = responseSongInfo.danceability,
+            energy = responseSongInfo.energy,
+            instrumentalness = responseSongInfo.instrumentalness,
+            liveness = responseSongInfo.liveness,
+            speechiness = responseSongInfo.speechiness,
+            valence = responseSongInfo.valence,
         )
         return songInfo
     }
 
-    private fun buildUrl(path: String, extraParams: Map<String, String> = emptyMap()): String {
+    /** [repeatedParams] is for query params that need to appear more than once (e.g.
+     *  `getVibeSimilarTracks`'s `exclude` list) - [extraParams] alone can't represent that, since
+     *  a `Map` can only hold one value per key. */
+    private fun buildUrl(
+        path: String,
+        extraParams: Map<String, String> = emptyMap(),
+        repeatedParams: List<Pair<String, String>> = emptyList(),
+    ): String {
         val s =
             session ?: error("ApiService not configured — call configure() or restoreSession() first")
         return URLBuilder().apply {
@@ -115,6 +130,7 @@ class ApiService {
             parameters.append("c", CLIENT_NAME)
             parameters.append("f", "json")
             extraParams.forEach { (k, v) -> parameters.append(k, v) }
+            repeatedParams.forEach { (k, v) -> parameters.append(k, v) }
         }
             .buildString()
     }
@@ -295,19 +311,36 @@ class ApiService {
         }
     }
 
-    /** Songs with a similar VibeNet-tag "vibe" to [seedSongId], via the custom
-     *  `getVibeSimilarTracks` endpoint this app's own Navidrome fork adds (see the README's
-     *  Backend section) - powers the Autoplay queue-continuation feature. Not part of standard
-     *  Subsonic/Navidrome, so wrapped in try/catch like [getRecapTopSongs] and degrades to an
-     *  empty list on any failure, including a 404 from a stock server that doesn't have it. Each
-     *  entry's `entry` is a full song object - same shape [toSongInfo] already consumes elsewhere -
-     *  the accompanying per-entry `distance` score isn't needed here and is dropped. */
-    suspend fun getVibeSimilarSongs(seedSongId: String, count: Int): List<SongInfo> {
+    /** Songs with a similar vibe to [vibeProfile] (the current queue's own averaged VibeNet
+     *  stats - see [xyz.skifty.mani.media.PlaybackQueue.maybeFetchAutoplay]), excluding
+     *  [excludeSongIds] (every song already anywhere in the queue, so Autoplay never re-suggests
+     *  a duplicate), via the custom `getVibeSimilarTracks` endpoint this app's own Navidrome fork
+     *  adds (see the README's Backend section) - powers the Autoplay queue-continuation feature.
+     *  Not part of standard Subsonic/Navidrome, so wrapped in try/catch like [getRecapTopSongs]
+     *  and degrades to an empty list on any failure, including a 404 from a stock server that
+     *  doesn't have it. Each entry's `entry` is a full song object - same shape [toSongInfo]
+     *  already consumes elsewhere - the accompanying per-entry `distance` score isn't needed here
+     *  and is dropped. */
+    suspend fun getVibeSimilarSongs(
+        vibeProfile: VibeProfile,
+        excludeSongIds: List<String>,
+        count: Int,
+    ): List<SongInfo> {
         return try {
             val result = httpClient.get(
                 buildUrl(
                     "/rest/getVibeSimilarTracks",
-                    mapOf("id" to seedSongId, "count" to count.toString()),
+                    mapOf(
+                        "acousticness" to vibeProfile.acousticness.toString(),
+                        "danceability" to vibeProfile.danceability.toString(),
+                        "energy" to vibeProfile.energy.toString(),
+                        "instrumentalness" to vibeProfile.instrumentalness.toString(),
+                        "liveness" to vibeProfile.liveness.toString(),
+                        "speechiness" to vibeProfile.speechiness.toString(),
+                        "valence" to vibeProfile.valence.toString(),
+                        "count" to count.toString(),
+                    ),
+                    repeatedParams = excludeSongIds.map { songId -> "exclude" to songId },
                 ),
             )
             if (!result.status.isSuccess()) {

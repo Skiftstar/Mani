@@ -31,13 +31,18 @@ over the last 30 days. This one's a genuine extra feature, not just an ignorable
 stock server the request fails and the shelf simply doesn't appear, with the rest of Home
 (Random Songs, Liked Songs) completely unaffected.
 
-It also adds a `getVibeSimilarTracks` endpoint (songs similar to a given one, based on its
-VibeNet tags), which powers Autoplay: once the queue runs low, Mani fetches ~20 similar songs
-based on the last queued song and seamlessly continues into them once the queue would otherwise
-run out, for as long as playback continues. Autoplay can be toggled on Android (Profile screen,
-on by default); desktop always has it on, since it has no settings screen yet. Same graceful
-degradation as `getRecap`: on a stock server the request fails and Autoplay simply never
-triggers, with normal queue playback completely unaffected.
+It also adds a `getVibeSimilarTracks` endpoint (songs similar to a given VibeNet taste profile -
+7 stats: acousticness, danceability, energy, instrumentalness, liveness, speechiness, valence -
+each also returned directly on every song, alongside a repeatable `exclude` param), which powers
+Autoplay: once the queue runs low, Mani averages those 7 stats across the songs the user has
+actually queued (not counting anything Autoplay itself already added), fetches ~20 songs matching
+that profile while excluding everything already anywhere in the queue, and seamlessly continues
+into them once the queue would otherwise run out - for as long as playback continues, since each
+new batch reseeds the next. Manually adding or removing a queued song changes that average, so it
+recomputes any still-pending batch. Autoplay can be toggled on Android (Profile screen, on by
+default); desktop always has it on, since it has no settings screen yet. Same graceful degradation
+as `getRecap`: on a stock server the request fails (or songs simply lack the 7 stats) and Autoplay
+simply never triggers, with normal queue playback completely unaffected.
 
 ## Screenshots
 
