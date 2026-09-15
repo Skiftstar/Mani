@@ -34,6 +34,7 @@
     <!-- Profile screen (Android) -->
     <string name="profile_logout_button">Abmelden</string>
     <string name="profile_show_visualizer_label">Audio-Visualizer anzeigen</string>
+    <string name="profile_autoplay_label">Ähnliche Songs automatisch abspielen</string>
 
     <!-- Now Playing screen (Android) -->
     <string name="cd_collapse_now_playing">Einklappen</string>
@@ -74,6 +75,7 @@
 
     <!-- Queue view -->
     <string name="queue_title">Warteschlange</string>
+    <string name="queue_autoplay_title">Autoplay</string>
     <string name="queue_empty_state">Keine Songs in der Warteschlange</string>
     <string name="cd_remove_from_queue">Aus der Warteschlange entfernen</string>
     <string name="cd_close_queue">Warteschlange schließen</string>

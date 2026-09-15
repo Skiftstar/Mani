@@ -12,5 +12,6 @@ data class SubsonicResponse(
     val searchResult3: SearchResult3? = null,
     val randomSongs: RandomSongs? = null,
     val recap: Recap? = null,
+    val vibeSimilarTrack: List<VibeSimilarTrackEntry>? = null,
     val error: SubsonicError? = null,
 )

@@ -171,6 +171,8 @@ fun AndroidApp() {
                         Screen.Profile -> ProfileScreen(
                             showVisualizer = appShellState.showVisualizer,
                             onShowVisualizerChange = appShellState::setShowVisualizer,
+                            autoplayEnabled = appShellState.autoplayEnabled,
+                            onAutoplayChange = appShellState::setAutoplayEnabled,
                             onLogout = { appShellState.logout() },
                         )
 

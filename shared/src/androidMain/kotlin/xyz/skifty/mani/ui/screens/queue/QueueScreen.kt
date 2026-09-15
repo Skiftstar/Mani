@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 import mani.shared.generated.resources.Res
+import mani.shared.generated.resources.queue_autoplay_title
 import mani.shared.generated.resources.queue_empty_state
 import mani.shared.generated.resources.queue_title
 import org.jetbrains.compose.resources.stringResource
@@ -47,7 +48,10 @@ private val QUEUE_HORIZONTAL_MARGIN = 24.dp
 
 /** The queue's upcoming songs - reached by swiping up from Now Playing when something's actually
  *  queued next (see AndroidApp's navigateToQueueSource()). Each row is clickable to skip straight
- *  to it ([PlaybackQueue.skipTo]) with its own remove button ([PlaybackQueue.removeAt]).
+ *  to it ([PlaybackQueue.skipTo]) with its own remove button ([PlaybackQueue.removeAt]). A
+ *  separate "Autoplay" section lists [PlaybackQueue.upcomingAutoplay] plus
+ *  [PlaybackQueue.autoplayPreview] (a batch already fetched but not yet reached - shown as soon
+ *  as it's ready, not only once playback gets there).
  *
  *  Swiping down dismisses back to Now Playing ([onSwipeDown]) - but only once the list is already
  *  scrolled to its top; a [NestedScrollConnection] (rather than NowPlayingScreen's plain
@@ -112,7 +116,9 @@ fun QueueScreen(
         )
 
         val upcoming = playbackQueue.upcoming
-        if (upcoming.isEmpty()) {
+        val upcomingAutoplay = playbackQueue.upcomingAutoplay
+        val autoplayPreview = playbackQueue.autoplayPreview
+        if (upcoming.isEmpty() && upcomingAutoplay.isEmpty() && autoplayPreview.isEmpty()) {
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -143,6 +149,48 @@ fun QueueScreen(
                         },
                         modifier = Modifier.padding(horizontal = QUEUE_HORIZONTAL_MARGIN, vertical = 8.dp),
                     )
+                }
+
+                if (upcomingAutoplay.isNotEmpty() || autoplayPreview.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = stringResource(Res.string.queue_autoplay_title),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(
+                                horizontal = QUEUE_HORIZONTAL_MARGIN,
+                                vertical = 8.dp,
+                            ),
+                        )
+                    }
+                    items(upcomingAutoplay, key = { entry -> entry.position }) { entry ->
+                        QueueSongRow(
+                            songInfo = entry.song,
+                            onClick = {
+                                playbackQueue.skipTo(entry.position)
+                            },
+                            onRemove = {
+                                playbackQueue.removeAt(entry.position)
+                            },
+                            modifier = Modifier.padding(horizontal = QUEUE_HORIZONTAL_MARGIN, vertical = 8.dp),
+                        )
+                    }
+                    items(autoplayPreview) { song ->
+                        QueueSongRow(
+                            songInfo = song,
+                            onClick = {
+                                song.songId?.let { songId ->
+                                    playbackQueue.skipToAutoplayPreview(songId)
+                                }
+                            },
+                            onRemove = {
+                                song.songId?.let { songId ->
+                                    playbackQueue.removeFromAutoplayPreview(songId)
+                                }
+                            },
+                            modifier = Modifier.padding(horizontal = QUEUE_HORIZONTAL_MARGIN, vertical = 8.dp),
+                        )
+                    }
                 }
             }
         }

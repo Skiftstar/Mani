@@ -3,6 +3,12 @@ package xyz.skifty.mani.media
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import xyz.skifty.mani.api.ApiService
+
+// Autoplay prefetches once this few songs remain after the current one, and fetches this many
+// similar songs at a time - see maybeFetchAutoplay().
+private const val AUTOPLAY_TRIGGER_REMAINING_COUNT = 3
+private const val AUTOPLAY_FETCH_COUNT = 20
 
 /**
  * Owns the current playback queue - which songs are queued, in what order, and where playback
@@ -12,6 +18,7 @@ import androidx.compose.runtime.setValue
 class PlaybackQueue(
     private val audioPlayer: AudioPlayer,
     private val activeSongInfo: SongInfo,
+    private val apiService: ApiService,
 ) {
 
     var songs: List<SongInfo> by mutableStateOf(emptyList())
@@ -41,37 +48,72 @@ class PlaybackQueue(
     private var loopModeState: LoopMode by mutableStateOf(LoopMode.OFF)
     val loopMode: LoopMode get() = loopModeState
 
+    // A fetched-but-not-yet-merged Autoplay batch, and the accumulated ids of every song ever
+    // merged in from one - see maybeFetchAutoplay()/mergeAutoplaySongs(). autoplaySongIds is
+    // never pruned; both upcoming/upcomingAutoplay below already only ever look at what's still
+    // ahead of currentPosition regardless. Both need to be Compose state, not plain vars - a
+    // Queue view reads autoplayPreview/upcomingAutoplay directly, and without mutableStateOf here
+    // a fetch landing wouldn't recompose it until something else (like songs/playOrder on the
+    // next skip) happened to change too.
+    private var autoplayPending: List<SongInfo>? by mutableStateOf(null)
+    private var autoplaySongIds: Set<String> by mutableStateOf(emptySet())
+
+    // Also true at the very end of playOrder if an Autoplay batch is already fetched and waiting
+    // to be merged in - see next() - so the skip-forward button doesn't gray out right when
+    // Autoplay has more ready to play.
     val hasNext: Boolean
-        get() = songs.isNotEmpty() && (loopMode == LoopMode.ALL || currentPosition < playOrder.lastIndex)
+        get() = songs.isNotEmpty() &&
+            (loopMode == LoopMode.ALL || currentPosition < playOrder.lastIndex || autoplayPending != null)
 
     val hasPrevious: Boolean
         get() = songs.isNotEmpty() && (loopMode == LoopMode.ALL || currentPosition > 0)
 
     /** The song [next] would skip to, without actually skipping - null if nothing's queued after
      *  the current position (mirrors [next]'s own wrap-on-[LoopMode.ALL] rule), for UI that wants
-     *  to preview what's coming up (e.g. a "Next in Queue" panel). */
+     *  to preview what's coming up (e.g. a "Next in Queue" panel). At the very end of playOrder,
+     *  falls back to the first song of a pending Autoplay batch - same "don't hide what [next]
+     *  would actually do" reasoning as [hasNext]. */
     val nextSong: SongInfo?
         get() {
             val nextPosition = currentPosition + 1
             val position = when {
                 nextPosition <= playOrder.lastIndex -> nextPosition
                 loopMode == LoopMode.ALL -> 0
-                else -> return null
+                else -> return autoplayPending?.firstOrNull()
             }
             val songIndex = playOrder.getOrNull(position)
                 ?: return null
             return songs.getOrNull(songIndex)
         }
 
-    /** Every song still to come this pass, in actual play order (post-shuffle), each paired with
-     *  its own [playOrder] index - the stable identifier [skipTo]/[removeAt] expect. Unlike
-     *  [nextSong], deliberately does not wrap on [LoopMode.ALL] - this is "what's left in the
-     *  queue," not an infinite preview, for a Queue view to list. */
-    val upcoming: List<QueueEntry>
-        get() = playOrder.drop(currentPosition + 1)
+    private fun upcomingEntries(): List<QueueEntry> =
+        playOrder.drop(currentPosition + 1)
             .mapIndexedNotNull { offset, songIndex ->
                 songs.getOrNull(songIndex)?.let { song -> QueueEntry(currentPosition + 1 + offset, song) }
             }
+
+    /** Every manually-queued song still to come this pass, in actual play order (post-shuffle),
+     *  each paired with its own [playOrder] index - the stable identifier [skipTo]/[removeAt]
+     *  expect. Unlike [nextSong], deliberately does not wrap on [LoopMode.ALL] - this is "what's
+     *  left in the queue," not an infinite preview, for a Queue view to list. Excludes any
+     *  Autoplay-sourced songs - see [upcomingAutoplay] for those. */
+    val upcoming: List<QueueEntry>
+        get() = upcomingEntries().filterNot { entry -> entry.song.songId in autoplaySongIds }
+
+    /** The Autoplay-sourced counterpart to [upcoming] - songs appended by [maybeFetchAutoplay]/
+     *  [next], listed separately so a Queue view can show them under their own "Autoplay"
+     *  section instead of blending them into the user's own queue. */
+    val upcomingAutoplay: List<QueueEntry>
+        get() = upcomingEntries().filter { entry -> entry.song.songId in autoplaySongIds }
+
+    /** The Autoplay batch [maybeFetchAutoplay] has already fetched but that hasn't been reached
+     *  (and so merged into [songs]/[playOrder] - see [next]) yet - exposed so a Queue view can
+     *  show it under the same "Autoplay" section right away, once it's ready, rather than only
+     *  once playback actually reaches it. Clicking or removing one of these goes through
+     *  [skipToAutoplayPreview]/[removeFromAutoplayPreview], not [skipTo]/[removeAt] - these songs
+     *  have no [playOrder] position yet. */
+    val autoplayPreview: List<SongInfo>
+        get() = autoplayPending.orEmpty()
 
     /** Replaces the queue with [newSongs] (sourced from [sourceId] - a playlist id, or null for
      *  Liked Songs, matching PlaylistScreen's own convention) and starts playing [startIndex] -
@@ -90,6 +132,10 @@ class PlaybackQueue(
         )
         currentPosition = playOrder.indexOf(startIndex)
             .coerceAtLeast(0)
+        // A fresh queue context shouldn't carry over an Autoplay batch fetched for whatever was
+        // playing before.
+        autoplayPending = null
+        autoplaySongIds = emptySet()
         playCurrent()
     }
 
@@ -108,16 +154,28 @@ class PlaybackQueue(
         currentPosition = 0
     }
 
-    /** Appends [song] to the end of the current queue without interrupting playback. If nothing's
-     *  queued yet, there's nothing to append to - starts a fresh single-song queue instead, same
-     *  as [start] would for a plain "play this song now". */
+    /** Queues [song] without interrupting playback - normally appended to the very end, but if
+     *  the currently playing song is itself Autoplay-sourced (i.e. Autoplay is actively playing,
+     *  not just pending - see [autoplaySongIds]), inserted right after the current song instead,
+     *  so a manually queued song always plays next rather than being buried after the rest of the
+     *  Autoplay batch. If nothing's queued yet, there's nothing to append to - starts a fresh
+     *  single-song queue instead, same as [start] would for a plain "play this song now". */
     fun addToEnd(song: SongInfo) {
         if (songs.isEmpty()) {
             start(listOf(song), 0, sourceId = null)
             return
         }
+        val currentSongId = playOrder.getOrNull(currentPosition)
+            ?.let { songIndex -> songs.getOrNull(songIndex)?.songId }
+        val insertRightAfterCurrent = currentSongId != null && currentSongId in autoplaySongIds
+
+        val newSongIndex = songs.size
         songs = songs + song
-        playOrder = playOrder + songs.lastIndex
+        playOrder = if (insertRightAfterCurrent) {
+            playOrder.toMutableList().apply { add(currentPosition + 1, newSongIndex) }
+        } else {
+            playOrder + newSongIndex
+        }
     }
 
     fun setShuffle(enabled: Boolean) {
@@ -152,7 +210,10 @@ class PlaybackQueue(
     }
 
     /** Manual skip forward - ignores [LoopMode.ONE] (repeat-one only affects [onTrackFinished]),
-     *  wraps to the start only when [LoopMode.ALL]. */
+     *  wraps to the start only when [LoopMode.ALL]. Reaching the end of the queue while a
+     *  Autoplay batch is ready ([autoplayPending]) merges it in and continues instead of
+     *  stopping - this branch is only reachable under [LoopMode.OFF], since [LoopMode.ALL] wraps
+     *  above it, so no explicit loop-mode check is needed here. */
     fun next() {
         if (songs.isEmpty()) {
             return
@@ -161,7 +222,12 @@ class PlaybackQueue(
         currentPosition = when {
             nextPosition <= playOrder.lastIndex -> nextPosition
             loopMode == LoopMode.ALL -> 0
-            else -> return
+            else -> {
+                val pending = autoplayPending
+                    ?: return
+                mergeAutoplaySongs(pending)
+                nextPosition
+            }
         }
         playCurrent()
     }
@@ -233,6 +299,70 @@ class PlaybackQueue(
         } else {
             next()
         }
+    }
+
+    /** Prefetches ~[AUTOPLAY_FETCH_COUNT] similar songs, based on the queue's current last song,
+     *  once [upcoming] has [AUTOPLAY_TRIGGER_REMAINING_COUNT] or fewer songs left in it - a no-op
+     *  if a batch is already pending (deliberately not recomputed just because more songs get
+     *  manually queued in the meantime), if [loopMode] isn't [LoopMode.OFF] (nothing to
+     *  prefetch for - see [next]'s doc comment on why the actual merge is structurally OFF-only
+     *  regardless), or if the fetch comes back empty. Callers are expected to invoke this
+     *  reactively as the queue changes, e.g. from a `LaunchedEffect`. */
+    suspend fun maybeFetchAutoplay() {
+        if (loopMode != LoopMode.OFF || autoplayPending != null) {
+            return
+        }
+        val remaining = playOrder.size - currentPosition - 1
+        if (remaining > AUTOPLAY_TRIGGER_REMAINING_COUNT) {
+            return
+        }
+        val seedSongId = songs.lastOrNull()?.songId
+            ?: return
+        val similarSongs = apiService.getVibeSimilarSongs(seedSongId, AUTOPLAY_FETCH_COUNT)
+        if (similarSongs.isNotEmpty()) {
+            autoplayPending = similarSongs
+        }
+    }
+
+    /** Appends a fetched Autoplay [batch] to [songs]/[playOrder] and marks its songs as
+     *  Autoplay-sourced for [upcomingAutoplay] - called from [next] once the user's own queue
+     *  runs out, and from [skipToAutoplayPreview] to promote the preview batch early. */
+    private fun mergeAutoplaySongs(batch: List<SongInfo>) {
+        val firstNewIndex = songs.size
+        songs = songs + batch
+        playOrder = playOrder + (firstNewIndex until songs.size)
+        autoplaySongIds = autoplaySongIds + batch.mapNotNull { song -> song.songId }
+        autoplayPending = null
+    }
+
+    /** Jumps straight to [songId] within the still-pending [autoplayPreview] batch, promoting the
+     *  whole batch into the queue first ([mergeAutoplaySongs]) - lets the Autoplay preview
+     *  section be clicked before it's naturally reached. A no-op if nothing's pending or [songId]
+     *  isn't in it. */
+    fun skipToAutoplayPreview(songId: String) {
+        val pending = autoplayPending
+            ?: return
+        if (pending.none { song -> song.songId == songId }) {
+            return
+        }
+        mergeAutoplaySongs(pending)
+        val songIndex = songs.indexOfLast { song -> song.songId == songId }
+        val position = playOrder.indexOf(songIndex)
+        if (position == -1) {
+            return
+        }
+        currentPosition = position
+        playCurrent()
+    }
+
+    /** Drops [songId] from the still-pending [autoplayPreview] batch, before it's merged into the
+     *  queue - the preview section's "remove" action. A no-op once the batch has already been
+     *  merged (use [removeAt] instead). Clears [autoplayPending] back to null, not an empty list,
+     *  if that was the last preview song - [maybeFetchAutoplay] only re-fetches once it's null. */
+    fun removeFromAutoplayPreview(songId: String) {
+        autoplayPending = autoplayPending
+            ?.filterNot { song -> song.songId == songId }
+            ?.takeIf { remaining -> remaining.isNotEmpty() }
     }
 
     /** [AudioPlayer.resume]'s queue-aware counterpart - if [audioPlayer] already played the

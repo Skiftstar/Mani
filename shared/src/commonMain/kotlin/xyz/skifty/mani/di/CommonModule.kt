@@ -17,6 +17,7 @@ val commonModule = module {
         PlaybackQueue(
             audioPlayer = get(),
             activeSongInfo = get(),
+            apiService = get(),
         )
     }
     single { PlaylistLibrary() }

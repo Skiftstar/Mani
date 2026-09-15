@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -24,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import mani.shared.generated.resources.Res
 import mani.shared.generated.resources.cd_close_queue
+import mani.shared.generated.resources.queue_autoplay_title
 import mani.shared.generated.resources.queue_empty_state
 import mani.shared.generated.resources.queue_title
 import org.jetbrains.compose.resources.stringResource
@@ -34,7 +36,10 @@ import xyz.skifty.mani.ui.components.QueueSongRow
 /** Replaces [NowPlayingPanel] in the same side-panel slot while the queue view is open - a title
  *  row with a close (`X`) button to switch back, then every [PlaybackQueue.upcoming] song, each
  *  clickable to skip straight to it ([PlaybackQueue.skipTo]) with its own remove button
- *  ([PlaybackQueue.removeAt]) - or an empty-state message when nothing's queued. */
+ *  ([PlaybackQueue.removeAt]), followed by a separate "Autoplay" section for
+ *  [PlaybackQueue.upcomingAutoplay] plus [PlaybackQueue.autoplayPreview] (a batch already fetched
+ *  but not yet reached - shown as soon as it's ready, not only once playback gets there) - or an
+ *  empty-state message when nothing's queued at all. */
 @Composable
 fun QueuePanel(
     playbackQueue: PlaybackQueue,
@@ -61,7 +66,9 @@ fun QueuePanel(
         Spacer(Modifier.height(16.dp))
 
         val upcoming = playbackQueue.upcoming
-        if (upcoming.isEmpty()) {
+        val upcomingAutoplay = playbackQueue.upcomingAutoplay
+        val autoplayPreview = playbackQueue.autoplayPreview
+        if (upcoming.isEmpty() && upcomingAutoplay.isEmpty() && autoplayPreview.isEmpty()) {
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -97,6 +104,41 @@ fun QueuePanel(
                                 playbackQueue.removeAt(entry.position)
                             },
                         )
+                    }
+
+                    if (upcomingAutoplay.isNotEmpty() || autoplayPreview.isNotEmpty()) {
+                        Text(
+                            text = stringResource(Res.string.queue_autoplay_title),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
+                        )
+                        for (entry in upcomingAutoplay) {
+                            QueueSongRow(
+                                songInfo = entry.song,
+                                onClick = {
+                                    playbackQueue.skipTo(entry.position)
+                                },
+                                onRemove = {
+                                    playbackQueue.removeAt(entry.position)
+                                },
+                            )
+                        }
+                        for (song in autoplayPreview) {
+                            QueueSongRow(
+                                songInfo = song,
+                                onClick = {
+                                    song.songId?.let { songId ->
+                                        playbackQueue.skipToAutoplayPreview(songId)
+                                    }
+                                },
+                                onRemove = {
+                                    song.songId?.let { songId ->
+                                        playbackQueue.removeFromAutoplayPreview(songId)
+                                    }
+                                },
+                            )
+                        }
                     }
                 }
                 AutoHidingScrollbar(

@@ -295,6 +295,31 @@ class ApiService {
         }
     }
 
+    /** Songs with a similar VibeNet-tag "vibe" to [seedSongId], via the custom
+     *  `getVibeSimilarTracks` endpoint this app's own Navidrome fork adds (see the README's
+     *  Backend section) - powers the Autoplay queue-continuation feature. Not part of standard
+     *  Subsonic/Navidrome, so wrapped in try/catch like [getRecapTopSongs] and degrades to an
+     *  empty list on any failure, including a 404 from a stock server that doesn't have it. Each
+     *  entry's `entry` is a full song object - same shape [toSongInfo] already consumes elsewhere -
+     *  the accompanying per-entry `distance` score isn't needed here and is dropped. */
+    suspend fun getVibeSimilarSongs(seedSongId: String, count: Int): List<SongInfo> {
+        return try {
+            val result = httpClient.get(
+                buildUrl(
+                    "/rest/getVibeSimilarTracks",
+                    mapOf("id" to seedSongId, "count" to count.toString()),
+                ),
+            )
+            if (!result.status.isSuccess()) {
+                return emptyList()
+            }
+            result.body<SubsonicResponseWrapper>().response.vibeSimilarTrack.orEmpty()
+                .map { similarTrack -> toSongInfo(similarTrack.entry) }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
     /** Stars [songId] server-side (makes it appear in getStarredSongs()/Liked Songs). */
     suspend fun star(songId: String): Result<Unit> = setStarred("/rest/star", songId)
 

@@ -22,16 +22,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import mani.shared.generated.resources.Res
+import mani.shared.generated.resources.profile_autoplay_label
 import mani.shared.generated.resources.profile_logout_button
 import mani.shared.generated.resources.profile_show_visualizer_label
 import org.jetbrains.compose.resources.stringResource
 
-/** Also doubles as the app's only settings surface for now - just the audio visualizer toggle
- *  below, next to the existing logout button. */
+/** Also doubles as the app's only settings surface for now - just the audio visualizer and
+ *  Autoplay toggles below, next to the existing logout button. */
 @Composable
 fun ProfileScreen(
     showVisualizer: Boolean,
     onShowVisualizerChange: (Boolean) -> Unit,
+    autoplayEnabled: Boolean,
+    onAutoplayChange: (Boolean) -> Unit,
     onLogout: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -79,6 +82,20 @@ fun ProfileScreen(
             Switch(
                 checked = showVisualizer,
                 onCheckedChange = ::onVisualizerToggled,
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(stringResource(Res.string.profile_autoplay_label))
+            Switch(
+                checked = autoplayEnabled,
+                onCheckedChange = onAutoplayChange,
             )
         }
 

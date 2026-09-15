@@ -34,6 +34,7 @@
     <!-- Profile screen (Android) -->
     <string name="profile_logout_button">Log Out</string>
     <string name="profile_show_visualizer_label">Show audio visualizer</string>
+    <string name="profile_autoplay_label">Autoplay similar songs</string>
 
     <!-- Now Playing screen (Android) -->
     <string name="cd_collapse_now_playing">Collapse</string>
@@ -74,6 +75,7 @@
 
     <!-- Queue view -->
     <string name="queue_title">Queue</string>
+    <string name="queue_autoplay_title">Autoplay</string>
     <string name="queue_empty_state">No songs queued</string>
     <string name="cd_remove_from_queue">Remove from queue</string>
     <string name="cd_close_queue">Close queue</string>

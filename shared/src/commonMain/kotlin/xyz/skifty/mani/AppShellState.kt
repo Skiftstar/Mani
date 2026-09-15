@@ -43,12 +43,22 @@ class AppShellState(
     var showVisualizer by mutableStateOf(false)
         internal set
 
+    // Whether the queue should auto-continue with similar songs once it runs out - see
+    // PlaybackQueue.maybeFetchAutoplay(). Android-only toggle (Profile screen), defaulting to on;
+    // desktop has no settings screen yet, so it stays permanently on there.
+    var autoplayEnabled by mutableStateOf(true)
+        internal set
+
     fun navigate(target: Screen) {
         screen = target
     }
 
     fun setShowVisualizer(enabled: Boolean) {
         showVisualizer = enabled
+    }
+
+    fun setAutoplayEnabled(enabled: Boolean) {
+        autoplayEnabled = enabled
     }
 
     fun logout() {
@@ -164,6 +174,27 @@ fun rememberAppShellState(): AppShellState {
 
     LaunchedEffect(state.showVisualizer) {
         runCatching { appPreferences.save("mani_show_visualizer", state.showVisualizer.toString()) }
+    }
+
+    LaunchedEffect(Unit) {
+        runCatching {
+            appPreferences.get("mani_autoplay_enabled")
+                ?.toBooleanStrictOrNull()
+                ?.let { savedAutoplayEnabled -> state.autoplayEnabled = savedAutoplayEnabled }
+        }
+    }
+
+    LaunchedEffect(state.autoplayEnabled) {
+        runCatching { appPreferences.save("mani_autoplay_enabled", state.autoplayEnabled.toString()) }
+    }
+
+    // Prefetches the next Autoplay batch as the queue changes, so it's ready by the time the
+    // user's own queue actually runs out - see PlaybackQueue.maybeFetchAutoplay(). Desktop has no
+    // toggle for autoplayEnabled yet, so this stays on there unconditionally.
+    LaunchedEffect(playbackQueue.currentPosition, playbackQueue.songs, state.autoplayEnabled) {
+        if (state.autoplayEnabled) {
+            playbackQueue.maybeFetchAutoplay()
+        }
     }
 
     // Guards against scrobbling the same play-through twice: a natural finish (trackFinishedCount,
