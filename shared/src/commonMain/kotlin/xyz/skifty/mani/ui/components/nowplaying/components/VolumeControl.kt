@@ -7,6 +7,7 @@ import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.automirrored.filled.VolumeDown
 import androidx.compose.material.icons.automirrored.filled.VolumeMute
 import androidx.compose.material.icons.automirrored.filled.VolumeOff
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
@@ -59,7 +60,8 @@ fun VolumeControl(audioPlayer: AudioPlayer, modifier: Modifier = Modifier) {
             Icon(
                 imageVector = when {
                     isMuted -> Icons.AutoMirrored.Filled.VolumeOff
-                    volume < 50 -> Icons.AutoMirrored.Filled.VolumeMute
+                    volume < 34 -> Icons.AutoMirrored.Filled.VolumeMute
+                    volume < 67 -> Icons.AutoMirrored.Filled.VolumeDown
                     else -> Icons.AutoMirrored.Filled.VolumeUp
                 },
                 contentDescription = stringResource(Res.string.cd_volume),
