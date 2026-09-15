@@ -1,5 +1,6 @@
 package xyz.skifty.mani.media
 
+import android.content.Intent
 import android.media.AudioManager
 import android.util.Log
 import androidx.media3.common.AudioAttributes
@@ -79,6 +80,16 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession = mediaSession
+
+    // MediaSessionService's own default onTaskRemoved() deliberately keeps a still-playing
+    // session alive as a background service. This app wants the opposite: swiping Mani away from
+    // recents should stop playback entirely, same as force-stopping it, rather than leaving an
+    // orphaned service running. stopSelf() tears the service down, which triggers onDestroy()
+    // below to release the player/session/visualizer the normal way.
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        player.stop()
+        stopSelf()
+    }
 
     override fun onDestroy() {
         audioSessionVisualizer.release()
