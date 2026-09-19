@@ -80,10 +80,11 @@ on `PATH` for `adb`.
 
 On Linux, desktop's dev build runs directly against your system's installed
 `mpv` (on PATH) - no packaging step involved, the quickest way to iterate.
-On Windows, it needs `libmpv-2.dll` present under
-`desktopApp/resources/windows/` first - run
-`.\gradlew.bat :desktopApp:downloadMpvForWindows` once (same task the `.msi`
-packaging step below depends on) before `:desktopApp:run`.
+On Windows, the first `:desktopApp:run` automatically fetches and unpacks
+`libmpv-2.dll` into `desktopApp/resources/windows/` first (the same task the
+`.msi` packaging step below depends on) - that one-time download is ~30MB
+compressed (~120MB once unpacked), so the very first run takes noticeably
+longer than every one after it.
 
 ### Package a distributable build
 
