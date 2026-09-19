@@ -4,9 +4,10 @@ import java.nio.channels.ByteChannel
 
 /**
  * Abstracts how a byte-stream connection to mpv's IPC endpoint at [connect]'s `socketPath` is
- * opened - a Unix domain socket on Linux (see [LinuxMpvIpcTransport]), a named pipe on Windows
- * (see [WindowsMpvIpcTransport]). [MpvIpcClient] only depends on this, never on socket/pipe
- * specifics directly.
+ * opened - a Unix domain socket on Linux (see [LinuxMpvIpcTransport], the only implementation
+ * left; a Windows named-pipe one existed here too until `WindowsLibMpvAudioPlayer` replaced
+ * Windows' entire subprocess-plus-JSON-IPC approach with a direct libmpv binding). [MpvIpcClient]
+ * only depends on this, never on socket specifics directly.
  */
 interface MpvIpcTransport {
 

@@ -19,9 +19,13 @@ captures
 node_modules/
 
 # Fetched at build time by downloadMpvForWindows (desktopApp/build.gradle.kts) rather than
-# committed - too large for a normal git push (GitHub's 100MB per-file limit).
+# committed - too large for a normal git push (GitHub's 100MB per-file limit). mpv.exe/
+# d3dcompiler_43.dll were the previous bundled files (a subprocess-plus-IPC approach); Windows now
+# talks to mpv via a direct libmpv-2.dll binding instead (WindowsLibMpvAudioPlayer) and no longer
+# bundles either of the old two, but both entries are left in case that ever changes back.
 desktopApp/resources/windows/mpv.exe
 desktopApp/resources/windows/d3dcompiler_43.dll
+desktopApp/resources/windows/libmpv-2.dll
 
 # makepkg build artifacts (packaging/arch/PKGBUILD) - src/ and pkg/ are makepkg's own internal
 # working directories; mani/ is the actual git checkout it clones per the PKGBUILD's

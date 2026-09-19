@@ -41,7 +41,12 @@ private val json = Json {
  * unavailable.
  */
 class MpvIpcClient(
-    private val transport: MpvIpcTransport = MpvIpcTransportFactory.create(),
+    // The only remaining MpvIpcTransport implementation - Windows used to pick between this and
+    // WindowsMpvIpcTransport here via a small factory, but that transport (and the factory
+    // choosing between them) was deleted once WindowsLibMpvAudioPlayer replaced it: Windows now
+    // talks to mpv through a direct libmpv binding instead of this class's subprocess+JSON-IPC
+    // approach at all, so DesktopAudioPlayer (this class's only caller) is Linux-only in practice.
+    private val transport: MpvIpcTransport = LinuxMpvIpcTransport(),
 ) {
 
     private val process: Process
@@ -245,38 +250,22 @@ class MpvIpcClient(
 
 }
 
-/** The `mpv` executable to spawn - a bundled copy under this packaged app's own resources
- *  directory if one's there (Windows only for now - see `desktopApp/build.gradle.kts`'s
- *  `appResourcesRootDir`, since Windows has no system package manager to depend on mpv through
- *  the way the Linux `.deb` does), otherwise a bare PATH lookup. `compose.application.resources.dir`
- *  is only set at all inside a packaged app - never during a plain `./gradlew :desktopApp:run` -
- *  so local dev runs always fall through to PATH, same as before this existed. */
+/** The `mpv` executable to spawn - a bare PATH lookup for the system `mpv` package the `.deb`
+ *  already depends on (see `addMpvDependencyToDeb` in `desktopApp/build.gradle.kts`). This class
+ *  ([MpvIpcClient], owned by [DesktopAudioPlayer]) is only ever constructed on Linux now -
+ *  DesktopModule.kt dispatches Windows to `WindowsLibMpvAudioPlayer`'s direct libmpv binding
+ *  instead, which talks to mpv in-process and never spawns this executable at all. */
 private fun resolveMpvExecutable(): String {
-    val exeName = if (System.getProperty("os.name").lowercase().contains("win")) "mpv.exe" else "mpv"
     val resourcesDir = System.getProperty("compose.application.resources.dir")
-        ?: return exeName
-    val bundled = File(resourcesDir, exeName)
-    return if (bundled.exists()) bundled.absolutePath else exeName
+        ?: return "mpv"
+    val bundled = File(resourcesDir, "mpv")
+    return if (bundled.exists()) bundled.absolutePath else "mpv"
 }
 
-private fun mpvInstallInstructions(): String {
-    val os = System.getProperty("os.name")
-        .lowercase()
-    return when {
-        os.contains("win") ->
-            "  Scoop:  scoop bucket add extras; scoop install mpv\n" +
-                "  winget: winget install --id shinchiro.mpv\n" +
-                "  or download a build from https://mpv.io/installation/ and add it to PATH"
-
-        os.contains("nux") || os.contains("nix") ->
-            "  Debian/Ubuntu: sudo apt install mpv\n" +
-                "  Fedora:        sudo dnf install mpv\n" +
-                "  Arch:          sudo pacman -S mpv"
-
-        else ->
-            "  see https://mpv.io/installation/ for install instructions"
-    }
-}
+private fun mpvInstallInstructions(): String =
+    "  Debian/Ubuntu: sudo apt install mpv\n" +
+        "  Fedora:        sudo dnf install mpv\n" +
+        "  Arch:          sudo pacman -S mpv"
 
 private fun Any.toJsonElement(): JsonElement = when (this) {
     is String -> JsonPrimitive(this)

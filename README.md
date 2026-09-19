@@ -12,9 +12,10 @@ Anyways, the rest of the README is by Claude, so have fun with that.
 
 A Subsonic/Navidrome music client for desktop and Android, built with Kotlin
 Multiplatform and Compose Multiplatform. Desktop playback is driven by
-[mpv](https://mpv.io/) over its JSON IPC socket, with MPRIS integration on
-Linux. Android playback runs on Media3/ExoPlayer as a background
-service.
+[mpv](https://mpv.io/) - as a separate subprocess over its JSON IPC socket
+on Linux (with MPRIS integration there too), or linked in-process via its
+`libmpv` C API on Windows. Android playback runs on Media3/ExoPlayer as a
+background service.
 
 ## Backend
 
@@ -77,14 +78,18 @@ on `PATH` for `adb`.
   launch **Mani** from the app drawer - or skip the app drawer and run
   `adb shell am start -n xyz.skifty.mani/.MainActivity` directly.
 
-Desktop's dev build runs directly against your system's installed `mpv` (on
-PATH) - no packaging step involved, the quickest way to iterate.
+On Linux, desktop's dev build runs directly against your system's installed
+`mpv` (on PATH) - no packaging step involved, the quickest way to iterate.
+On Windows, it needs `libmpv-2.dll` present under
+`desktopApp/resources/windows/` first - run
+`.\gradlew.bat :desktopApp:downloadMpvForWindows` once (same task the `.msi`
+packaging step below depends on) before `:desktopApp:run`.
 
 ### Package a distributable build
 
 | Target | Command | Extra build-machine prerequisites |
 | --- | --- | --- |
-| Windows `.msi` | `.\gradlew.bat :desktopApp:packageReleaseMsi` | [7-Zip](https://www.7-zip.org/) (`7z` on PATH) - used to fetch and unpack the bundled `mpv` build |
+| Windows `.msi` | `.\gradlew.bat :desktopApp:packageReleaseMsi` | [7-Zip](https://www.7-zip.org/) (`7z` on PATH) - used to fetch and unpack the bundled `libmpv-2.dll` |
 | Linux `.deb` | `./gradlew :desktopApp:packageReleaseDeb :desktopApp:addMpvDependencyToDeb` | `dpkg-deb`/`fakeroot` (e.g. `sudo apt install dpkg-dev fakeroot`, or `sudo pacman -S dpkg fakeroot` on non-Debian distros) |
 | Linux `.AppImage`-style app-image | `./gradlew :desktopApp:packageReleaseAppImage` | - |
 | Android (debug) | `./gradlew :androidApp:assembleDebug` | - |
@@ -134,6 +139,12 @@ This is a Kotlin Multiplatform project targeting Android and Desktop (JVM):
   depends on `shared`.
 * [`/packaging`](./packaging) holds distro-specific packaging files not
   produced directly by Gradle (currently just the Arch `PKGBUILD`).
+
+## License
+
+Mani is licensed under the GPLv3 (see [LICENSE](LICENSE)) - third-party
+license notices, including mpv's, are in
+[THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md).
 
 ## Roadmap
 

@@ -141,9 +141,9 @@ compose.desktop {
                 "jdk.security.auth",
             )
 
-            // Bundled per-OS extra files - only resources/windows/ is populated (mpv.exe +
-            // d3dcompiler_43.dll, fetched at build time by downloadMpvForWindows below rather than
-            // committed - see that task for why). resources/linux/ and resources/macos/ are the
+            // Bundled per-OS extra files - only resources/windows/ is populated (libmpv-2.dll,
+            // fetched at build time by downloadMpvForWindows below rather than committed - see that
+            // task for why). resources/linux/ and resources/macos/ are the
             // equivalent special-cased folder names Compose recognizes, left absent since Linux
             // depends on a system mpv package instead (see addMpvDependencyToDeb below) and macOS
             // isn't a target.
@@ -229,19 +229,30 @@ tasks.register("addMpvDependencyToDeb") {
     }
 }
 
-// mpv.exe is ~117MB once built with this project's feature set - too large for a normal git push
-// (GitHub rejects any single file over 100MB), so it's fetched here at build time instead of
+// libmpv-2.dll is ~119MB once built with this project's feature set - too large for a normal git
+// push (GitHub rejects any single file over 100MB), so it's fetched here at build time instead of
 // committed, from a pinned github.com/shinchiro/mpv-winbuild-cmake release (the same project
-// MpvIpcClient's own missing-mpv install instructions already point Windows users to). Pinned by
-// release tag rather than "latest", for reproducible builds - bump mpvWindowsBuildTag by hand
-// when a newer build is wanted. Each release's asset filenames carry a build-specific git-commit
-// suffix that isn't predictable ahead of time (e.g. "mpv-x86_64-20260814-git-7b8915bc1d.7z"), so
-// the exact filename is resolved via the GitHub API rather than guessed or hardcoded - confirmed
-// by hand against the real API response, matching only the plain x86_64 build (excluding the
-// "-dev-" headers/import-lib package and the "-v3-" variant, which needs a newer CPU baseline).
+// MpvIpcClient's own missing-mpv install instructions already point Windows users to, for Linux's
+// system-mpv fallback). Pinned by release tag rather than "latest", for reproducible builds - bump
+// mpvWindowsBuildTag by hand when a newer build is wanted.
+//
+// Windows plays audio through libmpv directly now (WindowsLibMpvAudioPlayer, an in-process JNA
+// binding), not by spawning a bundled mpv.exe subprocess the way it used to (see DesktopModule.kt's
+// AudioPlayer dispatch) - so this only needs the "-dev-" asset (the one carrying libmpv-2.dll
+// itself, alongside headers/an import-lib this build doesn't need), not the "vanilla" one
+// (mpv.exe/d3dcompiler_43.dll), which nothing on Windows uses anymore. Confirmed by hand:
+// libmpv-2.dll is a ~119MB solid, statically-linked build (same size class mpv.exe alone used to
+// be), strongly indicating it's fully self-contained rather than needing sibling codec DLLs the
+// "vanilla" package would have provided.
+//
+// Each release's asset filenames carry a build-specific git-commit suffix that isn't predictable
+// ahead of time (e.g. "mpv-dev-x86_64-20260814-git-7b8915bc1d.7z"), so the exact filename is
+// resolved via the GitHub API rather than guessed or hardcoded - confirmed by hand against the real
+// API response, matching only the plain x86_64 "-dev-" build (excluding the aarch64/i686/-v3-
+// variants, which target a different CPU/architecture baseline).
 val downloadMpvForWindows = tasks.register("downloadMpvForWindows") {
     val windowsResourcesDir = layout.projectDirectory.dir("resources/windows")
-    val archiveDownloadFile = layout.buildDirectory.file("mpvWindowsDownload/mpv.7z")
+    val archiveDownloadFile = layout.buildDirectory.file("mpvWindowsDownload/mpv-dev.7z")
 
     doLast {
         // Local to this action, not a script-top-level val/function - see addMpvDependencyToDeb's
@@ -259,9 +270,8 @@ val downloadMpvForWindows = tasks.register("downloadMpvForWindows") {
             }
         }
 
-        val exeFile = windowsResourcesDir.file("mpv.exe").asFile
-        val dllFile = windowsResourcesDir.file("d3dcompiler_43.dll").asFile
-        if (exeFile.exists() && dllFile.exists()) {
+        val dllFile = windowsResourcesDir.file("libmpv-2.dll").asFile
+        if (dllFile.exists()) {
             return@doLast // already fetched - avoid re-downloading a >100MB archive every build
         }
 
@@ -270,12 +280,12 @@ val downloadMpvForWindows = tasks.register("downloadMpvForWindows") {
         )
             .toURL()
             .readText()
-        val assetFileName = Regex(""""name":\s*"(mpv-x86_64-\d{8}-git-[0-9a-f]+\.7z)"""")
+        val assetFileName = Regex(""""name":\s*"(mpv-dev-x86_64-\d{8}-git-[0-9a-f]+\.7z)"""")
             .find(releaseJson)
             ?.groupValues
             ?.get(1)
             ?: throw GradleException(
-                "Could not find an mpv-x86_64-<date>-git-<hash>.7z asset in release " +
+                "Could not find an mpv-dev-x86_64-<date>-git-<hash>.7z asset in release " +
                     "$mpvWindowsBuildTag - check " +
                     "https://github.com/shinchiro/mpv-winbuild-cmake/releases/tag/$mpvWindowsBuildTag " +
                     "by hand and update mpvWindowsBuildTag if needed.",
@@ -293,28 +303,25 @@ val downloadMpvForWindows = tasks.register("downloadMpvForWindows") {
             archiveFile.outputStream().use { output -> input.copyTo(output) }
         }
 
-        // Extracted via the system `7z` CLI, not a JVM library (commons-compress + its optional
-        // xz dependency were tried first, but the extra xz.jar this project's buildscript{} block
-        // declared for 7z's LZMA2 filter genuinely wasn't reachable from this task's execution
-        // classloader at runtime - confirmed by hand, NoClassDefFoundError on org.tukaani.xz
-        // classes despite the jar being correctly resolved into the Gradle cache - a Gradle
-        // subproject-buildscript-classpath limitation, not something worth continuing to fight).
-        // `7z e` (not `x`) extracts matched files flat, ignoring the archive's own internal
-        // directory structure - exactly the two files named here, nothing else, straight into
-        // resources/windows/ with no subfolder - confirmed by hand against the real archive.
+        // Extracted via the system `7z` CLI, not a JVM library - see this same reasoning
+        // previously proven out for the "vanilla" mpv package (commons-compress + its optional xz
+        // dependency weren't reachable from this task's execution classloader at runtime).
+        // `7z e` (not `x`) extracts the matched file flat, ignoring the archive's own internal
+        // directory structure - confirmed by hand against the real archive (libmpv-2.dll sits
+        // alongside libmpv.dll.a and an include/mpv/ headers folder this build doesn't need).
         windowsResourcesDir.asFile.mkdirs()
         runCommand(
             "7z", "e", archiveFile.absolutePath,
             "-o${windowsResourcesDir.asFile.absolutePath}",
-            "mpv.exe", "d3dcompiler_43.dll",
+            "libmpv-2.dll",
             "-r", "-y",
         )
         archiveFile.delete()
 
-        if (!exeFile.exists() || !dllFile.exists()) {
+        if (!dllFile.exists()) {
             throw GradleException(
-                "mpv.exe/d3dcompiler_43.dll weren't found inside the downloaded archive - its " +
-                    "internal layout may have changed; check $assetUrl by hand.",
+                "libmpv-2.dll wasn't found inside the downloaded archive - its internal layout " +
+                    "may have changed; check $assetUrl by hand.",
             )
         }
     }
@@ -330,6 +337,23 @@ val downloadMpvForWindows = tasks.register("downloadMpvForWindows") {
 // and takes effect only where a task actually named this exists.
 tasks.matching { task -> task.name == "packageMsi" || task.name == "packageReleaseMsi" }
     .configureEach { dependsOn(downloadMpvForWindows) }
+
+// Unlike packageMsi above, every one of these run tasks is registered unconditionally on every
+// host OS (Compose/Kotlin's plugins don't skip registering them on Linux/macOS the way packageMsi
+// is skipped) - so this needs its own explicit os.name check rather than relying on
+// tasks.matching's "no task named this exists" no-op the way packageMsi's wiring does. Without
+// this, a fresh Windows checkout's first `:desktopApp:run` (or any of these siblings) would fail
+// with an UnsatisfiedLinkError - libmpv-2.dll doesn't exist yet until downloadMpvForWindows has
+// run at least once (previously only wired to happen before packaging, never before running).
+if (System.getProperty("os.name").lowercase().contains("win")) {
+    tasks.matching { task ->
+        task.name in setOf(
+            "run", "runDistributable", "runRelease", "runReleaseDistributable",
+            "hotDevJvm", "hotDevJvmAsync", "hotRunJvm", "hotRunJvmAsync", "jvmRun",
+        )
+    }
+        .configureEach { dependsOn(downloadMpvForWindows) }
+}
 
 // Deliberately not using appimagetool (the "official" packaging CLI) here - it's distributed as an
 // AppImage itself, and both its FUSE-mount path and its APPIMAGE_EXTRACT_AND_RUN fallback were
