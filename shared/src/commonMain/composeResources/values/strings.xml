@@ -73,6 +73,15 @@
     <string name="now_playing_panel_plays_count">%1$d plays</string>
     <string name="now_playing_panel_next_in_queue">Next in Queue</string>
 
+    <!-- Now playing panel - mood tags (VibeNet stats, only shown when the server provides them) -->
+    <string name="vibe_acousticness">Acoustic %1$d%</string>
+    <string name="vibe_danceability">Danceable %1$d%</string>
+    <string name="vibe_energy">Energetic %1$d%</string>
+    <string name="vibe_instrumentalness">Instrumental %1$d%</string>
+    <string name="vibe_liveness">Live %1$d%</string>
+    <string name="vibe_speechiness">Spoken %1$d%</string>
+    <string name="vibe_valence">Positive %1$d%</string>
+
     <!-- Queue view -->
     <string name="queue_title">Queue</string>
     <string name="queue_autoplay_title">Autoplay</string>
