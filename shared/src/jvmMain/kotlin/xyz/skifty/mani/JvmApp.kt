@@ -40,6 +40,7 @@ import mani.shared.generated.resources.playlist_liked_songs_title
 import org.jetbrains.compose.resources.stringResource
 import xyz.skifty.mani.media.mpris.MprisService
 import xyz.skifty.mani.ui.components.AutoHidingScrollbar
+import xyz.skifty.mani.ui.components.LanguageDropdown
 import xyz.skifty.mani.ui.components.SearchBar
 import xyz.skifty.mani.ui.components.Sidebar
 import xyz.skifty.mani.ui.components.nowplaying.NowPlayingBottomWidget
@@ -50,8 +51,9 @@ import xyz.skifty.mani.ui.components.util.TextFieldFocusTracker
 import xyz.skifty.mani.ui.screens.Screen
 import xyz.skifty.mani.ui.screens.home.HomeScreen
 import xyz.skifty.mani.ui.screens.login.LoginScreen
-import xyz.skifty.mani.ui.screens.login.components.LanguageDropdown
 import xyz.skifty.mani.ui.screens.playlist.PlaylistScreen
+import xyz.skifty.mani.ui.screens.profile.ProfileScreen
+import xyz.skifty.mani.ui.screens.profile.components.ProfileAppearanceSection
 import xyz.skifty.mani.ui.screens.search.SearchScreen
 import xyz.skifty.mani.ui.theme.ManiTheme
 
@@ -242,7 +244,7 @@ fun JvmApp() {
                             (isQueueViewActive || maxWidth >= MIN_WINDOW_WIDTH_FOR_NOW_PLAYING_PANEL)
 
                         Row(modifier = Modifier.fillMaxSize()) {
-                            if (appShellState.screen == Screen.Home || appShellState.screen == Screen.LikedSongs || appShellState.screen == Screen.Search || appShellState.screen is Screen.Playlist) {
+                            if (appShellState.screen == Screen.Home || appShellState.screen == Screen.LikedSongs || appShellState.screen == Screen.Search || appShellState.screen is Screen.Playlist || appShellState.screen == Screen.Profile) {
                                 Sidebar(
                                     apiService = apiService,
                                     playlistLibrary = playlistLibrary,
@@ -258,6 +260,8 @@ fun JvmApp() {
                                             navigate(Screen.Home)
                                         }
                                     },
+                                    onProfileClick = { navigate(Screen.Profile) },
+                                    profileSelected = appShellState.screen == Screen.Profile,
                                 )
                             }
 
@@ -271,7 +275,7 @@ fun JvmApp() {
                                 // below, so it stays visible at the top of the content area - next
                                 // to the sidebar, not above it - regardless of how far the screen
                                 // content itself is scrolled.
-                                if (appShellState.screen != null && appShellState.screen != Screen.Login) {
+                                if (appShellState.screen != null && appShellState.screen != Screen.Login && appShellState.screen != Screen.Profile) {
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -290,62 +294,93 @@ fun JvmApp() {
                                     modifier = Modifier.weight(1f)
                                         .fillMaxWidth(),
                                 ) {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .verticalScroll(scrollState),
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                    ) {
-                                        when (val currentScreen = appShellState.screen) {
-                                            null -> Box(
-                                                modifier = Modifier.fillMaxSize(),
-                                                contentAlignment = Alignment.Center,
-                                            ) {
-                                                CircularProgressIndicator()
+                                    // Profile owns its own layout (a fixed-height TabRow above a
+                                    // per-tab content area, with only the Recap tab itself
+                                    // scrolling internally - see RecapTab.kt) rather than sharing
+                                    // this Column's outer scroll like every other screen below -
+                                    // nesting a second verticalScroll around it would crash at
+                                    // runtime, same hazard AndroidApp.kt's own Playlist branch
+                                    // documents.
+                                    if (appShellState.screen == Screen.Profile) {
+                                        ProfileScreen(
+                                            apiService = apiService,
+                                            showVisualizer = appShellState.showVisualizer,
+                                            onShowVisualizerChange = appShellState::setShowVisualizer,
+                                            autoplayEnabled = appShellState.autoplayEnabled,
+                                            onAutoplayChange = appShellState::setAutoplayEnabled,
+                                            onLogout = { appShellState.logout() },
+                                            modifier = Modifier.fillMaxSize(),
+                                            platformAppearanceSection = {
+                                                ProfileAppearanceSection(
+                                                    selectedLanguage = appLanguage,
+                                                    onLanguageChange = { language ->
+                                                        Locale.setDefault(language.toLocale(systemDefaultLocale))
+                                                        appLanguage = language
+                                                    },
+                                                )
+                                            },
+                                        )
+                                    } else {
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .verticalScroll(scrollState),
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                        ) {
+                                            when (val currentScreen = appShellState.screen) {
+                                                null -> Box(
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    contentAlignment = Alignment.Center,
+                                                ) {
+                                                    CircularProgressIndicator()
+                                                }
+
+                                                Screen.Home -> HomeScreen(
+                                                    apiService = apiService,
+                                                    playbackQueue = playbackQueue,
+                                                )
+                                                Screen.Login -> LoginScreen(
+                                                    apiService,
+                                                    onLoginSuccess = { navigate(Screen.Home) },
+                                                )
+
+                                                Screen.LikedSongs -> PlaylistScreen(
+                                                    apiService = apiService,
+                                                    audioPlayer = audioPlayer,
+                                                    activeSongInfo = activeSongInfo,
+                                                    playbackQueue = playbackQueue,
+                                                    playlistLibrary = playlistLibrary,
+                                                    playlistId = null,
+                                                    playlistName = stringResource(Res.string.playlist_liked_songs_title),
+                                                )
+
+                                                is Screen.Playlist -> PlaylistScreen(
+                                                    apiService = apiService,
+                                                    audioPlayer = audioPlayer,
+                                                    activeSongInfo = activeSongInfo,
+                                                    playbackQueue = playbackQueue,
+                                                    playlistLibrary = playlistLibrary,
+                                                    playlistId = currentScreen.playlistId,
+                                                    playlistName = currentScreen.playlistName,
+                                                )
+
+                                                Screen.Search -> SearchScreen(
+                                                    apiService = apiService,
+                                                    audioPlayer = audioPlayer,
+                                                    activeSongInfo = activeSongInfo,
+                                                    playbackQueue = playbackQueue,
+                                                    playlistLibrary = playlistLibrary,
+                                                    query = searchQuery,
+                                                    scrollState = scrollState,
+                                                )
+
+                                                // Handled above, outside this scroll container.
+                                                Screen.Profile -> Unit
+
+                                                // Android-only destinations - desktop's Sidebar
+                                                // never navigates to any of these, see Screen.kt.
+                                                Screen.Library, Screen.NowPlaying, Screen.Queue -> Unit
                                             }
-
-                                            Screen.Home -> HomeScreen(
-                                                apiService = apiService,
-                                                playbackQueue = playbackQueue,
-                                            )
-                                            Screen.Login -> LoginScreen(
-                                                apiService,
-                                                onLoginSuccess = { navigate(Screen.Home) },
-                                            )
-
-                                            Screen.LikedSongs -> PlaylistScreen(
-                                                apiService = apiService,
-                                                audioPlayer = audioPlayer,
-                                                activeSongInfo = activeSongInfo,
-                                                playbackQueue = playbackQueue,
-                                                playlistLibrary = playlistLibrary,
-                                                playlistId = null,
-                                                playlistName = stringResource(Res.string.playlist_liked_songs_title),
-                                            )
-
-                                            is Screen.Playlist -> PlaylistScreen(
-                                                apiService = apiService,
-                                                audioPlayer = audioPlayer,
-                                                activeSongInfo = activeSongInfo,
-                                                playbackQueue = playbackQueue,
-                                                playlistLibrary = playlistLibrary,
-                                                playlistId = currentScreen.playlistId,
-                                                playlistName = currentScreen.playlistName,
-                                            )
-
-                                            Screen.Search -> SearchScreen(
-                                                apiService = apiService,
-                                                audioPlayer = audioPlayer,
-                                                activeSongInfo = activeSongInfo,
-                                                playbackQueue = playbackQueue,
-                                                playlistLibrary = playlistLibrary,
-                                                query = searchQuery,
-                                                scrollState = scrollState,
-                                            )
-
-                                            // Android-only destinations - desktop's Sidebar never
-                                            // navigates to any of these, see Screen.kt.
-                                            Screen.Library, Screen.Profile, Screen.NowPlaying, Screen.Queue -> Unit
                                         }
                                     }
 

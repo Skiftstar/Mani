@@ -2,10 +2,54 @@
     <!-- Login screen -->
     <string name="login_title">Log In</string>
 
-    <!-- Profile screen (Android) -->
+    <!-- Profile screen -->
+    <string name="profile_recap_tab">Recap</string>
+    <string name="profile_settings_tab">Settings</string>
+    <string name="profile_server_subtitle">%1$s · Subsonic</string>
+    <string name="profile_playback_section">Playback</string>
+    <string name="profile_appearance_section">Appearance</string>
+    <string name="profile_account_section">Account</string>
     <string name="profile_logout_button">Log Out</string>
+    <string name="profile_logout_description">Clears your stored credentials</string>
+    <string name="profile_signed_in_as">Signed in as %1$s</string>
     <string name="profile_show_visualizer_label">Show audio visualizer</string>
+    <string name="profile_visualizer_description">Needs microphone access</string>
     <string name="profile_autoplay_label">Autoplay similar songs</string>
+    <string name="profile_language_label">Language</string>
+    <string name="profile_language_description">Follows the OS locale unless set</string>
+    <string name="cd_profile">Profile</string>
+
+    <!-- Recap tab -->
+    <string name="recap_unavailable">Recap isn\'t available on this server</string>
+    <string name="recap_range_last_30_days">Last 30 days</string>
+    <string name="recap_range_last_6_months">Last 6 months</string>
+    <string name="recap_range_last_year">Last year</string>
+    <string name="recap_range_custom">Custom range…</string>
+    <string name="custom_range_title">Select dates</string>
+    <string name="custom_range_placeholder">Start date - End date</string>
+    <string name="custom_range_cancel_button">Cancel</string>
+    <string name="custom_range_select_button">Select</string>
+    <string name="recap_stat_plays">Plays</string>
+    <string name="recap_stat_listened">Listened</string>
+    <string name="recap_stat_songs">Songs</string>
+    <string name="recap_stat_artists">Artists</string>
+    <string name="recap_top_song_title">Top song</string>
+    <string name="recap_playtime_share">%1$d% of playtime</string>
+    <string name="recap_top_artists_title">Top artists</string>
+    <string name="recap_top_songs_title">Top songs</string>
+    <string name="recap_taste_profile_title">Taste profile</string>
+    <string name="recap_axis_acoustic">Acoustic</string>
+    <string name="recap_axis_dance">Dance</string>
+    <string name="recap_axis_energy">Energy</string>
+    <string name="recap_axis_instrumental">Instrum.</string>
+    <string name="recap_axis_live">Live</string>
+    <string name="recap_axis_spoken">Spoken</string>
+    <string name="recap_axis_positive">Positive</string>
+    <string name="recap_save_as_playlist">Save as playlist</string>
+    <string name="recap_save_as_image">Save recap as image</string>
+    <string name="recap_save_as_playlist_success">Saved as playlist</string>
+    <string name="recap_save_as_playlist_error">Couldn\'t save as playlist</string>
+    <string name="recap_playlist_name_format">Recap · %1$s</string>
 
     <!-- Now playing panel -->
     <string name="now_playing_panel_title">Now Playing</string>

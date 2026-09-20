@@ -19,9 +19,12 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
@@ -52,6 +55,7 @@ import mani.shared.generated.resources.cd_albums
 import mani.shared.generated.resources.cd_create_playlist
 import mani.shared.generated.resources.cd_home
 import mani.shared.generated.resources.cd_liked_songs
+import mani.shared.generated.resources.cd_profile
 import org.jetbrains.compose.resources.stringResource
 import xyz.skifty.mani.api.ApiService
 import xyz.skifty.mani.ext.detectSecondaryClick
@@ -69,6 +73,8 @@ fun Sidebar(
     onLikedSongsClick: () -> Unit,
     onPlaylistClick: (PlaylistInfo) -> Unit,
     onPlaylistDeleted: (String) -> Unit,
+    onProfileClick: () -> Unit,
+    profileSelected: Boolean,
 ) {
 
     // Reads playlistLibrary directly rather than keeping its own separate fetch/state - anything
@@ -177,6 +183,21 @@ fun Sidebar(
                         )
                     }
                 }
+            }
+            HorizontalDivider(
+                modifier = Modifier.width(26.dp),
+                color = MaterialTheme.colorScheme.outlineVariant,
+            )
+            IconButton(onClick = onProfileClick) {
+                Icon(
+                    imageVector = Icons.Filled.Person,
+                    contentDescription = stringResource(Res.string.cd_profile),
+                    tint = if (profileSelected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        LocalContentColor.current
+                    },
+                )
             }
         }
         VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)

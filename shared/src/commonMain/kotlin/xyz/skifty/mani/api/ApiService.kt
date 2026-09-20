@@ -16,12 +16,14 @@ import xyz.skifty.mani.media.PlaylistDetails
 import xyz.skifty.mani.media.PlaylistInfo
 import xyz.skifty.mani.media.SongInfo
 import xyz.skifty.mani.media.VibeProfile
+import xyz.skifty.mani.models.Recap
 import xyz.skifty.mani.models.ResponseSongInfo
 import xyz.skifty.mani.models.SubsonicResponseWrapper
 import xyz.skifty.mani.util.generateSalt
 import xyz.skifty.mani.util.md5Hex
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.days
+import kotlin.time.Instant
 
 private const val API_VERSION = "1.16.1"
 private const val CLIENT_NAME = "mani"
@@ -83,7 +85,9 @@ class ApiService {
         }
     }
 
-    private fun toSongInfo(responseSongInfo: ResponseSongInfo): SongInfo {
+    // internal (not private) so Recap UI code can convert a RecapTopSong's raw entry the same way
+    // every other song list on the app does, without duplicating cover-art URL construction.
+    internal fun toSongInfo(responseSongInfo: ResponseSongInfo): SongInfo {
         val songInfo = SongInfo()
         val coverArtUrl = responseSongInfo.coverArt?.let { coverArtId ->
             buildUrl("/rest/getCoverArt", mapOf("id" to coverArtId, "size" to "300"))
@@ -308,6 +312,30 @@ class ApiService {
                 .map { topSong -> toSongInfo(topSong.entry) }
         } catch (e: Exception) {
             emptyList()
+        }
+    }
+
+    /** The full recap payload (summary, top songs, top artists, taste profile) for a given
+     *  [from]/[to] window, via the same custom `getRecap` endpoint as [getRecapTopSongs] - powers
+     *  the Profile screen's Recap tab. [from]/[to] are omitted from the request when null, per the
+     *  fork's own documented defaults (`recapDateRange` in `recap.go`): an omitted `from` means
+     *  "since the beginning", an omitted `to` means "now". Degrades to null (rather than an
+     *  empty/zeroed [Recap]) on any failure, including a 404 from a stock server without this
+     *  endpoint, so callers can tell "no data in range" apart from "endpoint unavailable". */
+    suspend fun getRecap(from: Instant?, to: Instant?, count: Int): Recap? {
+        return try {
+            val params = buildMap {
+                from?.let { put("from", it.toString()) }
+                to?.let { put("to", it.toString()) }
+                put("count", count.toString())
+            }
+            val result = httpClient.get(buildUrl("/rest/getRecap", params))
+            if (!result.status.isSuccess()) {
+                return null
+            }
+            result.body<SubsonicResponseWrapper>().response.recap
+        } catch (e: Exception) {
+            null
         }
     }
 

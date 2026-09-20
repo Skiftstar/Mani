@@ -17,6 +17,7 @@
     <string name="cd_liked_songs">Lieblingssongs</string>
     <string name="cd_albums">Alben</string>
     <string name="cd_playlist_cover">Playlist-Cover</string>
+    <string name="cd_profile">Profil</string>
 
     <!-- Home screen -->
     <string name="home_favorites_title">Deine Favoriten</string>
@@ -31,10 +32,53 @@
     <string name="nav_playlists">Playlists</string>
     <string name="nav_profile">Profil</string>
 
-    <!-- Profile screen (Android) -->
+    <!-- Profile screen -->
+    <string name="profile_recap_tab">Rückblick</string>
+    <string name="profile_settings_tab">Einstellungen</string>
+    <string name="profile_server_subtitle">%1$s · Subsonic</string>
+    <string name="profile_playback_section">Wiedergabe</string>
+    <string name="profile_appearance_section">Erscheinungsbild</string>
+    <string name="profile_account_section">Konto</string>
     <string name="profile_logout_button">Abmelden</string>
+    <string name="profile_logout_description">Löscht deine gespeicherten Anmeldedaten</string>
+    <string name="profile_signed_in_as">Angemeldet als %1$s</string>
     <string name="profile_show_visualizer_label">Audio-Visualizer anzeigen</string>
+    <string name="profile_visualizer_description">Benötigt Mikrofonzugriff</string>
     <string name="profile_autoplay_label">Ähnliche Songs automatisch abspielen</string>
+    <string name="profile_language_label">Sprache</string>
+    <string name="profile_language_description">Folgt der Systemsprache, sofern nicht festgelegt</string>
+
+    <!-- Recap tab -->
+    <string name="recap_unavailable">Recap ist auf diesem Server nicht verfügbar</string>
+    <string name="recap_range_last_30_days">Letzte 30 Tage</string>
+    <string name="recap_range_last_6_months">Letzte 6 Monate</string>
+    <string name="recap_range_last_year">Letztes Jahr</string>
+    <string name="recap_range_custom">Benutzerdefinierter Zeitraum…</string>
+    <string name="custom_range_title">Zeitraum auswählen</string>
+    <string name="custom_range_placeholder">Startdatum – Enddatum</string>
+    <string name="custom_range_cancel_button">Abbrechen</string>
+    <string name="custom_range_select_button">Auswählen</string>
+    <string name="recap_stat_plays">Wiedergaben</string>
+    <string name="recap_stat_listened">Gehört</string>
+    <string name="recap_stat_songs">Songs</string>
+    <string name="recap_stat_artists">Künstler</string>
+    <string name="recap_top_song_title">Top-Song</string>
+    <string name="recap_playtime_share">%1$d % der Wiedergabezeit</string>
+    <string name="recap_top_artists_title">Top-Künstler</string>
+    <string name="recap_top_songs_title">Top-Songs</string>
+    <string name="recap_taste_profile_title">Geschmacksprofil</string>
+    <string name="recap_axis_acoustic">Akustisch</string>
+    <string name="recap_axis_dance">Tanzbar</string>
+    <string name="recap_axis_energy">Energie</string>
+    <string name="recap_axis_instrumental">Instr.</string>
+    <string name="recap_axis_live">Live</string>
+    <string name="recap_axis_spoken">Gesprochen</string>
+    <string name="recap_axis_positive">Positiv</string>
+    <string name="recap_save_as_playlist">Als Playlist speichern</string>
+    <string name="recap_save_as_image">Recap als Bild speichern</string>
+    <string name="recap_save_as_playlist_success">Als Playlist gespeichert</string>
+    <string name="recap_save_as_playlist_error">Konnte nicht als Playlist gespeichert werden</string>
+    <string name="recap_playlist_name_format">Recap · %1$s</string>
 
     <!-- Now Playing screen (Android) -->
     <string name="cd_collapse_now_playing">Einklappen</string>
