@@ -26,11 +26,14 @@ tracking; Mani sends real elapsed listen time (excluding paused time, unaffected
 that param on every scrobble. A stock Subsonic/Navidrome server just ignores the extra param, so
 this works unmodified against either.
 
-That same fork also adds a `getRecap` endpoint (top songs/artists and a taste profile over a date
-range), which powers the Home screen's "Your Favorites" shelf - your top 50 most-played songs
-over the last 30 days. This one's a genuine extra feature, not just an ignorable param: on a
-stock server the request fails and the shelf simply doesn't appear, with the rest of Home
-(Random Songs, Liked Songs) completely unaffected.
+That same fork also adds a `getRecap` endpoint (a summary - play count, time listened, unique
+songs/artists - plus ranked top songs/artists and a taste profile, all over a date range), which
+powers both the Home screen's "Your Favorites" shelf (your top 50 most-played songs over the last
+30 days) and the Profile screen's Recap tab - the bigger consumer of the two, since it's the one
+that actually uses the summary stats, top artists, and taste profile fields, over a
+user-selectable range (last 30 days/6 months/year, or a custom range). This one's a genuine extra
+feature, not just an ignorable param: on a stock server the request fails and the shelf/Recap tab
+simply don't appear, with the rest of Home and Profile completely unaffected.
 
 It also adds a `getVibeSimilarTracks` endpoint (songs similar to a given VibeNet taste profile -
 7 stats: acousticness, danceability, energy, instrumentalness, liveness, speechiness, valence -
@@ -40,10 +43,10 @@ actually queued (not counting anything Autoplay itself already added), fetches ~
 that profile while excluding everything already anywhere in the queue, and seamlessly continues
 into them once the queue would otherwise run out - for as long as playback continues, since each
 new batch reseeds the next. Manually adding or removing a queued song changes that average, so it
-recomputes any still-pending batch. Autoplay can be toggled on Android (Profile screen, on by
-default); desktop always has it on, since it has no settings screen yet. Same graceful degradation
-as `getRecap`: on a stock server the request fails (or songs simply lack the 7 stats) and Autoplay
-simply never triggers, with normal queue playback completely unaffected.
+recomputes any still-pending batch. Autoplay can be toggled from the Profile screen's Settings tab
+on both platforms (on by default). Same graceful degradation as `getRecap`: on a stock server the
+request fails (or songs simply lack the 7 stats) and Autoplay simply never triggers, with normal
+queue playback completely unaffected.
 
 ## Screenshots
 
@@ -149,7 +152,17 @@ license notices, including mpv's, are in
 
 ## Roadmap
 
-- [ ] Profile settings (both platforms)
+- [x] Profile screen - account header, Recap/Settings tabs, reachable from
+      the desktop nav rail's avatar button and Android's existing bottom-nav
+      Profile destination (both platforms)
+- [x] Profile screen Recap tab - summary stats, top song, ranked top
+      artists/songs, and a taste-profile radar over a selectable date range
+      (last 30 days/6 months/year, or a custom range via a date-range
+      picker), with a "save top songs as playlist" action, via the custom
+      Navidrome fork's `getRecap` endpoint - see Backend (both platforms)
+- [x] Profile screen Settings tab - Autoplay toggle (both platforms), an
+      Android-only audio-visualizer toggle, a desktop-only language picker,
+      and log out
 - [x] Home screen layout (both platforms - currently an empty stub on each)
 - [x] Home screen "Your Favorites" shelf (top 50 most-played songs over the
       last 30 days, via the custom Navidrome fork's `getRecap` endpoint - see
@@ -175,4 +188,3 @@ license notices, including mpv's, are in
       playing, and a full-screen Now Playing view that expands from it with
       an animated transition (swipe up from there to jump to the playing
       song's playlist, or back-gesture to collapse)
-- [x] Android Audio Visualizer (toggleable in profile screen)
