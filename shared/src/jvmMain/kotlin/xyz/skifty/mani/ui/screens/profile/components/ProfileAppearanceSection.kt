@@ -1,7 +1,10 @@
 package xyz.skifty.mani.ui.screens.profile.components
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import mani.shared.generated.resources.Res
 import mani.shared.generated.resources.profile_appearance_section
 import mani.shared.generated.resources.profile_language_description
@@ -21,7 +24,10 @@ fun ProfileAppearanceSection(
     onLanguageChange: (AppLanguage) -> Unit,
 ) {
     Column {
-        SectionHeader(stringResource(Res.string.profile_appearance_section))
+        SectionHeader(
+            text = stringResource(Res.string.profile_appearance_section),
+            modifier = Modifier.padding(top = 20.dp),
+        )
         SettingsRow(
             label = stringResource(Res.string.profile_language_label),
             description = stringResource(Res.string.profile_language_description),

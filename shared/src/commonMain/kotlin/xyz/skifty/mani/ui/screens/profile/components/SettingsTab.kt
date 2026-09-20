@@ -2,12 +2,16 @@ package xyz.skifty.mani.ui.screens.profile.components
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import mani.shared.generated.resources.Res
 import mani.shared.generated.resources.profile_account_section
@@ -38,10 +42,16 @@ fun SettingsTab(
         SettingsRow(
             label = stringResource(Res.string.profile_autoplay_label),
             trailing = {
-                Switch(
-                    checked = autoplayEnabled,
-                    onCheckedChange = onAutoplayChange,
-                )
+                // Without this, the Switch's 48dp minimum touch target (taller than this row's
+                // single-line, description-less label) forces the whole row taller than needed,
+                // showing up as extra space above the PLAYBACK header relative to sections whose
+                // first row has a two-line label that already fills that height.
+                CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 0.dp) {
+                    Switch(
+                        checked = autoplayEnabled,
+                        onCheckedChange = onAutoplayChange,
+                    )
+                }
             },
         )
         ProfileVisualizerRow(
@@ -51,7 +61,10 @@ fun SettingsTab(
 
         platformAppearanceSection?.invoke()
 
-        SectionHeader(stringResource(Res.string.profile_account_section))
+        SectionHeader(
+            text = stringResource(Res.string.profile_account_section),
+            modifier = Modifier.padding(top = 20.dp),
+        )
         SettingsRow(
             label = stringResource(Res.string.profile_signed_in_as, username),
             description = stringResource(Res.string.profile_logout_description),
@@ -70,10 +83,14 @@ fun SettingsTab(
  *  across both the Recap and Settings tabs. Uppercased at display time rather than in the string
  *  resources themselves, so the underlying strings stay normal title-case text everywhere else. */
 @Composable
-fun SectionHeader(text: String) {
+fun SectionHeader(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
     Text(
         text = text.uppercase(),
         style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 0.09.em),
         color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier,
     )
 }
