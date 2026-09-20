@@ -10,8 +10,21 @@ url="https://github.com/Skiftstar/Mani"
 license=('GPL3')
 depends=('mpv')
 makedepends=('jdk17-openjdk')
-source=("$pkgname::git+$url.git")
-sha256sums=('SKIP')
+source=()
+sha256sums=()
+
+prepare() {
+    rm -rf "$pkgname"
+    mkdir -p "$pkgname"
+    # $startdir is this PKGBUILD's own directory (packaging/arch) - ../.. is the repo root. Copies
+    # the live working tree, uncommitted changes included, rather than fetching a GitHub clone.
+    # Excludes .git (irrelevant to the build), packaging (this directory itself - copying it in
+    # would recurse into its own src/pkg output) and build/.gradle (stale build output/caches that
+    # should be rebuilt fresh here, not reused from the host checkout).
+    tar -C "$startdir/../.." \
+        --exclude='.git' --exclude='packaging' --exclude='build' --exclude='.gradle' \
+        -cf - . | tar -C "$pkgname" -xf -
+}
 
 build() {
     cd "$pkgname"
