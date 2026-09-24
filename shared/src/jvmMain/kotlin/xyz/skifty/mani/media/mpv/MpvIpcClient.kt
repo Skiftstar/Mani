@@ -69,7 +69,18 @@ class MpvIpcClient(
 
         process = try {
             ProcessBuilder(
-                resolveMpvExecutable(), "--idle=yes", "--no-video", "--input-ipc-server=$socketPath",
+                resolveMpvExecutable(),
+                // Unlike libmpv (WindowsLibMpvAudioPlayer's backend, which defaults to ignoring
+                // user config), this spawns the real mpv CLI binary, which loads the user's own
+                // ~/.config/mpv/mpv.conf by default - e.g. a common save-position-on-quit=yes
+                // there makes mpv silently write a watch-later position for every track this class
+                // ever replaces, and resume from it the next time that same URL is loaded, which
+                // looks exactly like a track "remembering" where a previous skip left off. Mani
+                // drives mpv purely as a headless playback engine and needs deterministic behavior
+                // regardless of whatever the user has configured for their own interactive/video
+                // mpv usage, so this ignores all such files entirely.
+                "--no-config",
+                "--idle=yes", "--no-video", "--input-ipc-server=$socketPath",
             )
                 // mpv logs to stdout/stderr regardless of --no-terminal - discard rather than pipe,
                 // so it can't ever block on a full pipe buffer we're not draining, and doesn't spam

@@ -179,8 +179,16 @@ class WindowsLibMpvAudioPlayer : AudioPlayer {
             ?: return
         when (property.name) {
             "pause" -> setIsPlaying(dataPointer.getInt(0) == 0)
-            "time-pos" -> cachedPositionMs = (dataPointer.getDouble(0) * 1000).toLong()
-            "duration" -> cachedDurationMs = (dataPointer.getDouble(0) * 1000).toLong()
+            // Same stale-update guard as DesktopAudioPlayer's identical time-pos/duration observers
+            // - see that class's doc comment for the full race this avoids (an outgoing track's
+            // update still in flight on this event thread when loadfile is sent, landing after and
+            // clobbering play()'s synchronous cachedPositionMs/cachedDurationMs = 0L reset).
+            "time-pos" -> if (pendingStartPositionMs == null) {
+                cachedPositionMs = (dataPointer.getDouble(0) * 1000).toLong()
+            }
+            "duration" -> if (pendingStartPositionMs == null) {
+                cachedDurationMs = (dataPointer.getDouble(0) * 1000).toLong()
+            }
         }
     }
 

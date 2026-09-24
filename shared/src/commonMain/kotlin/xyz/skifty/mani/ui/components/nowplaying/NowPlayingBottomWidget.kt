@@ -19,7 +19,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -66,8 +65,6 @@ fun NowPlayingBottomWidget(
     var positionMs by remember { mutableLongStateOf(0L) }
     var durationMs by remember { mutableLongStateOf(1L) } // avoid /0
     var isDragging by remember { mutableStateOf(false) }
-    var lastSeekCount by remember { mutableIntStateOf(audioPlayer.seekCount) }
-    var lastSeekAtMs by remember { mutableLongStateOf(0L) }
 
     // A freshly (re)started track's real duration hasn't arrived from mpv yet at this instant -
     // reset immediately rather than waiting for the polling loop below to notice, which otherwise
@@ -82,26 +79,8 @@ fun NowPlayingBottomWidget(
 
     LaunchedEffect(audioPlayer) {
         while (true) {
-            if (audioPlayer.seekCount != lastSeekCount) {
-                lastSeekCount = audioPlayer.seekCount
-                lastSeekAtMs = System.currentTimeMillis()
-            }
             if (!isDragging) {
-                val freshPosition = audioPlayer.currentPosition()
-                // libVLC can transiently report a position near 0 while briefly re-buffering right
-                // after a manual seek elsewhere in the track - not reliably bounded to a single poll
-                // cycle, so waiting a fixed short delay before trusting a fresh read isn't enough to
-                // reliably outlast it (tried that first - it just held the *wrong* value for longer
-                // instead of the right one). Instead of guessing a wait time, don't trust an
-                // implausible snap back to (near) 0 shortly after we know we just seeked well past
-                // that - keep the last known-good value and let a later poll, once the position has
-                // genuinely moved on, take over.
-                val looksLikeTransientResetDuringSeek = freshPosition < 500 &&
-                    positionMs > 2000 &&
-                    System.currentTimeMillis() - lastSeekAtMs < 2000
-                if (!looksLikeTransientResetDuringSeek) {
-                    positionMs = freshPosition
-                }
+                positionMs = audioPlayer.currentPosition()
                 val d = audioPlayer.length()
                 if (d > 0) durationMs = d
             }

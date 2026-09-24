@@ -108,10 +108,30 @@ class DesktopAudioPlayer : AudioPlayer {
             data.jsonPrimitive.booleanOrNull?.let { paused -> setIsPlaying(!paused) }
         }
         mpv.observeProperty("time-pos") { data ->
-            data.jsonPrimitive.doubleOrNull?.let { seconds -> cachedPositionMs = (seconds * 1000).toLong() }
+            data.jsonPrimitive.doubleOrNull?.let { seconds ->
+                // Ignore updates that arrive while a play()/prepare() switch is still pending (see
+                // pendingStartPositionMs below) - mpv can still have an outgoing track's time-pos
+                // update in flight on this IPC reader thread when loadfile is sent, and processing
+                // it here would clobber play()'s synchronous cachedPositionMs = 0L reset right back
+                // to the *previous* track's position until the new track's own first update
+                // arrives. "file-loaded" always arrives before the new track's own time-pos updates
+                // (same reader thread, same in-order stream), so once it clears
+                // pendingStartPositionMs below, every update seen here is genuinely for the new
+                // track again.
+                if (pendingStartPositionMs == null) {
+                    cachedPositionMs = (seconds * 1000).toLong()
+                }
+            }
         }
         mpv.observeProperty("duration") { data ->
-            data.jsonPrimitive.doubleOrNull?.let { seconds -> cachedDurationMs = (seconds * 1000).toLong() }
+            data.jsonPrimitive.doubleOrNull?.let { seconds ->
+                // Same stale-update guard as time-pos above, and for the same reason cachedDurationMs
+                // is cleared alongside cachedPositionMs in play()/prepare(): a clobbered duration
+                // would make seekFraction() scale a seek against the *previous* track's length.
+                if (pendingStartPositionMs == null) {
+                    cachedDurationMs = (seconds * 1000).toLong()
+                }
+            }
         }
 
         mpv.onEvent("file-loaded") {
